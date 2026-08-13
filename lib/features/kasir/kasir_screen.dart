@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/payment_constants.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
@@ -60,7 +61,7 @@ class KasirScreen extends ConsumerWidget {
         localNumber: 'A-${DateTime.now().millisecondsSinceEpoch}',
         deviceId: 'device-dev-1',
         total: total,
-        paymentMethod: 'tunai',
+        paymentMethod: PaymentConstants.tunai,
         createdAt: DateTime.now(),
       ),
     );

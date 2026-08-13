@@ -5,6 +5,7 @@ import 'package:drift/drift.dart' hide Column;
 import '../../core/theme/app_theme.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
+import '../shift/rekonsiliasi_screen.dart';
 
 class RiwayatScreen extends ConsumerWidget {
   const RiwayatScreen({super.key});
@@ -92,7 +93,25 @@ class RiwayatScreen extends ConsumerWidget {
     final transactionsAsync = ref.watch(transactionsStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Transaksi')),
+      appBar: AppBar(
+        title: const Text('Riwayat Transaksi'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.calculate),
+              tooltip: 'Rekonsiliasi Kas',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const RekonsiliasiScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
       body: transactionsAsync.when(
         data: (allTransactions) {
           // Hitung total HANYA dari transaksi yang tidak di-void

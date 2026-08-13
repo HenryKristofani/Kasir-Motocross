@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/local/database.dart';
 import '../data/models/ticket_category_model.dart';
 import '../data/models/rekap_penjualan_model.dart';
+import '../core/constants/payment_constants.dart';
 import 'kuota_helper.dart';
 import 'package:drift/drift.dart';
 
@@ -117,4 +118,96 @@ final rekapPenjualanProvider = FutureProvider<List<RekapPenjualanItem>>((ref) as
   result.sort((a, b) => b.totalSubtotal.compareTo(a.totalSubtotal));
   
   return result;
+});
+
+// Provider khusus untuk data rekap hari ini saja (untuk rekonsiliasi kas)
+final rekapPenjualanHariIniProvider = FutureProvider<List<RekapPenjualanItem>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
+  ref.watch(transactionItemsStreamProvider); // Trigger update saat items berubah
+  
+  // Hitung periode hari ini
+  final DateTime now = DateTime.now();
+  final DateTime startOfDay = DateTime(now.year, now.month, now.day);
+  final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
+  
+  // Query transaction hari ini yang TIDAK di-void
+  final transactions = await (db.select(db.transactions)
+        ..where((t) => 
+          t.createdAt.isBiggerOrEqualValue(startOfDay) & 
+          t.createdAt.isSmallerThanValue(endOfDay) &
+          t.isVoided.equals(false)))
+      .get();
+  
+  // Ambil transaction IDs
+  final transactionIds = transactions.map((t) => t.id).toList();
+  
+  if (transactionIds.isEmpty) {
+    return [];
+  }
+  
+  // Query semua transaction items
+  final items = await db.select(db.transactionItems).get();
+  final filteredItems = items.where((item) => transactionIds.contains(item.transactionId)).toList();
+  
+  // Group by categoryId dan aggregate
+  final aggregated = <String, (int qty, int subtotal)>{};
+  for (final item in filteredItems) {
+    final existing = aggregated[item.categoryId] ?? (0, 0);
+    aggregated[item.categoryId] = (existing.$1 + item.qty, existing.$2 + item.subtotal);
+  }
+  
+  // Get kategori names
+  final kategoris = await (db.select(db.ticketCategories)).get();
+  final kategoriMap = {for (final kat in kategoris) kat.id: kat.name};
+  
+  // Build result dan sort by total subtotal (descending)
+  final result = aggregated.entries
+      .map((e) => RekapPenjualanItem(
+            kategoriId: e.key,
+            kategoriName: kategoriMap[e.key] ?? e.key,
+            totalQty: e.value.$1,
+            totalSubtotal: e.value.$2,
+          ))
+      .toList();
+  
+  result.sort((a, b) => b.totalSubtotal.compareTo(a.totalSubtotal));
+  
+  return result;
+});
+
+// Provider untuk total sistem tunai hari ini (untuk rekonsiliasi kas)
+final totalSistemTunaiHariIniProvider = FutureProvider<int>((ref) async {
+  final db = ref.watch(databaseProvider);
+  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
+  
+  // Hitung periode hari ini
+  final DateTime now = DateTime.now();
+  final DateTime startOfDay = DateTime(now.year, now.month, now.day);
+  final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
+  
+  // Query transaction hari ini yang TIDAK di-void dan payment method = "tunai"
+  final transactions = await (db.select(db.transactions)
+        ..where((t) => 
+          t.createdAt.isBiggerOrEqualValue(startOfDay) & 
+          t.createdAt.isSmallerThanValue(endOfDay) &
+          t.isVoided.equals(false) &
+          t.paymentMethod.equals(PaymentConstants.tunai)))
+      .get();
+  
+  // Jumlahkan total
+  int total = 0;
+  for (final transaction in transactions) {
+    total += transaction.total;
+  }
+  
+  return total;
+});
+
+// Stream semua shift reconciliations, urut dari terbaru
+final shiftReconciliationsStreamProvider = StreamProvider<List<ShiftReconciliation>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.shiftReconciliations)
+        ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
+      .watch();
 });

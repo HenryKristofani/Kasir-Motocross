@@ -43,12 +43,25 @@ class TransactionItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [TicketCategories, Transactions, TransactionItems])
+class ShiftReconciliations extends Table {
+  TextColumn get id => text()(); // UUID
+  TextColumn get deviceId => text()();
+  IntColumn get totalSistemTunai => integer()();
+  IntColumn get totalFisikTunai => integer()();
+  IntColumn get selisih => integer()(); // totalFisikTunai - totalSistemTunai
+  TextColumn get catatan => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [TicketCategories, Transactions, TransactionItems, ShiftReconciliations])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -59,6 +72,10 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(transactions, transactions.isVoided);
           await m.addColumn(transactions, transactions.voidReason);
           await m.addColumn(transactions, transactions.voidedAt);
+        }
+        if (oldVersion < 3) {
+          // Create ShiftReconciliations table
+          await m.createTable(shiftReconciliations);
         }
       },
     );

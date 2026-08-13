@@ -1297,6 +1297,483 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
   }
 }
 
+class $ShiftReconciliationsTable extends ShiftReconciliations
+    with TableInfo<$ShiftReconciliationsTable, ShiftReconciliation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ShiftReconciliationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalSistemTunaiMeta = const VerificationMeta(
+    'totalSistemTunai',
+  );
+  @override
+  late final GeneratedColumn<int> totalSistemTunai = GeneratedColumn<int>(
+    'total_sistem_tunai',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalFisikTunaiMeta = const VerificationMeta(
+    'totalFisikTunai',
+  );
+  @override
+  late final GeneratedColumn<int> totalFisikTunai = GeneratedColumn<int>(
+    'total_fisik_tunai',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _selisihMeta = const VerificationMeta(
+    'selisih',
+  );
+  @override
+  late final GeneratedColumn<int> selisih = GeneratedColumn<int>(
+    'selisih',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _catatanMeta = const VerificationMeta(
+    'catatan',
+  );
+  @override
+  late final GeneratedColumn<String> catatan = GeneratedColumn<String>(
+    'catatan',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    deviceId,
+    totalSistemTunai,
+    totalFisikTunai,
+    selisih,
+    catatan,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'shift_reconciliations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ShiftReconciliation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('total_sistem_tunai')) {
+      context.handle(
+        _totalSistemTunaiMeta,
+        totalSistemTunai.isAcceptableOrUnknown(
+          data['total_sistem_tunai']!,
+          _totalSistemTunaiMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalSistemTunaiMeta);
+    }
+    if (data.containsKey('total_fisik_tunai')) {
+      context.handle(
+        _totalFisikTunaiMeta,
+        totalFisikTunai.isAcceptableOrUnknown(
+          data['total_fisik_tunai']!,
+          _totalFisikTunaiMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalFisikTunaiMeta);
+    }
+    if (data.containsKey('selisih')) {
+      context.handle(
+        _selisihMeta,
+        selisih.isAcceptableOrUnknown(data['selisih']!, _selisihMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_selisihMeta);
+    }
+    if (data.containsKey('catatan')) {
+      context.handle(
+        _catatanMeta,
+        catatan.isAcceptableOrUnknown(data['catatan']!, _catatanMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ShiftReconciliation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ShiftReconciliation(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      totalSistemTunai: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_sistem_tunai'],
+      )!,
+      totalFisikTunai: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_fisik_tunai'],
+      )!,
+      selisih: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}selisih'],
+      )!,
+      catatan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}catatan'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ShiftReconciliationsTable createAlias(String alias) {
+    return $ShiftReconciliationsTable(attachedDatabase, alias);
+  }
+}
+
+class ShiftReconciliation extends DataClass
+    implements Insertable<ShiftReconciliation> {
+  final String id;
+  final String deviceId;
+  final int totalSistemTunai;
+  final int totalFisikTunai;
+  final int selisih;
+  final String? catatan;
+  final DateTime createdAt;
+  const ShiftReconciliation({
+    required this.id,
+    required this.deviceId,
+    required this.totalSistemTunai,
+    required this.totalFisikTunai,
+    required this.selisih,
+    this.catatan,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['device_id'] = Variable<String>(deviceId);
+    map['total_sistem_tunai'] = Variable<int>(totalSistemTunai);
+    map['total_fisik_tunai'] = Variable<int>(totalFisikTunai);
+    map['selisih'] = Variable<int>(selisih);
+    if (!nullToAbsent || catatan != null) {
+      map['catatan'] = Variable<String>(catatan);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  ShiftReconciliationsCompanion toCompanion(bool nullToAbsent) {
+    return ShiftReconciliationsCompanion(
+      id: Value(id),
+      deviceId: Value(deviceId),
+      totalSistemTunai: Value(totalSistemTunai),
+      totalFisikTunai: Value(totalFisikTunai),
+      selisih: Value(selisih),
+      catatan: catatan == null && nullToAbsent
+          ? const Value.absent()
+          : Value(catatan),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory ShiftReconciliation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ShiftReconciliation(
+      id: serializer.fromJson<String>(json['id']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      totalSistemTunai: serializer.fromJson<int>(json['totalSistemTunai']),
+      totalFisikTunai: serializer.fromJson<int>(json['totalFisikTunai']),
+      selisih: serializer.fromJson<int>(json['selisih']),
+      catatan: serializer.fromJson<String?>(json['catatan']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'totalSistemTunai': serializer.toJson<int>(totalSistemTunai),
+      'totalFisikTunai': serializer.toJson<int>(totalFisikTunai),
+      'selisih': serializer.toJson<int>(selisih),
+      'catatan': serializer.toJson<String?>(catatan),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  ShiftReconciliation copyWith({
+    String? id,
+    String? deviceId,
+    int? totalSistemTunai,
+    int? totalFisikTunai,
+    int? selisih,
+    Value<String?> catatan = const Value.absent(),
+    DateTime? createdAt,
+  }) => ShiftReconciliation(
+    id: id ?? this.id,
+    deviceId: deviceId ?? this.deviceId,
+    totalSistemTunai: totalSistemTunai ?? this.totalSistemTunai,
+    totalFisikTunai: totalFisikTunai ?? this.totalFisikTunai,
+    selisih: selisih ?? this.selisih,
+    catatan: catatan.present ? catatan.value : this.catatan,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  ShiftReconciliation copyWithCompanion(ShiftReconciliationsCompanion data) {
+    return ShiftReconciliation(
+      id: data.id.present ? data.id.value : this.id,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      totalSistemTunai: data.totalSistemTunai.present
+          ? data.totalSistemTunai.value
+          : this.totalSistemTunai,
+      totalFisikTunai: data.totalFisikTunai.present
+          ? data.totalFisikTunai.value
+          : this.totalFisikTunai,
+      selisih: data.selisih.present ? data.selisih.value : this.selisih,
+      catatan: data.catatan.present ? data.catatan.value : this.catatan,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShiftReconciliation(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('totalSistemTunai: $totalSistemTunai, ')
+          ..write('totalFisikTunai: $totalFisikTunai, ')
+          ..write('selisih: $selisih, ')
+          ..write('catatan: $catatan, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    deviceId,
+    totalSistemTunai,
+    totalFisikTunai,
+    selisih,
+    catatan,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ShiftReconciliation &&
+          other.id == this.id &&
+          other.deviceId == this.deviceId &&
+          other.totalSistemTunai == this.totalSistemTunai &&
+          other.totalFisikTunai == this.totalFisikTunai &&
+          other.selisih == this.selisih &&
+          other.catatan == this.catatan &&
+          other.createdAt == this.createdAt);
+}
+
+class ShiftReconciliationsCompanion
+    extends UpdateCompanion<ShiftReconciliation> {
+  final Value<String> id;
+  final Value<String> deviceId;
+  final Value<int> totalSistemTunai;
+  final Value<int> totalFisikTunai;
+  final Value<int> selisih;
+  final Value<String?> catatan;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const ShiftReconciliationsCompanion({
+    this.id = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.totalSistemTunai = const Value.absent(),
+    this.totalFisikTunai = const Value.absent(),
+    this.selisih = const Value.absent(),
+    this.catatan = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ShiftReconciliationsCompanion.insert({
+    required String id,
+    required String deviceId,
+    required int totalSistemTunai,
+    required int totalFisikTunai,
+    required int selisih,
+    this.catatan = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       deviceId = Value(deviceId),
+       totalSistemTunai = Value(totalSistemTunai),
+       totalFisikTunai = Value(totalFisikTunai),
+       selisih = Value(selisih),
+       createdAt = Value(createdAt);
+  static Insertable<ShiftReconciliation> custom({
+    Expression<String>? id,
+    Expression<String>? deviceId,
+    Expression<int>? totalSistemTunai,
+    Expression<int>? totalFisikTunai,
+    Expression<int>? selisih,
+    Expression<String>? catatan,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deviceId != null) 'device_id': deviceId,
+      if (totalSistemTunai != null) 'total_sistem_tunai': totalSistemTunai,
+      if (totalFisikTunai != null) 'total_fisik_tunai': totalFisikTunai,
+      if (selisih != null) 'selisih': selisih,
+      if (catatan != null) 'catatan': catatan,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ShiftReconciliationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? deviceId,
+    Value<int>? totalSistemTunai,
+    Value<int>? totalFisikTunai,
+    Value<int>? selisih,
+    Value<String?>? catatan,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return ShiftReconciliationsCompanion(
+      id: id ?? this.id,
+      deviceId: deviceId ?? this.deviceId,
+      totalSistemTunai: totalSistemTunai ?? this.totalSistemTunai,
+      totalFisikTunai: totalFisikTunai ?? this.totalFisikTunai,
+      selisih: selisih ?? this.selisih,
+      catatan: catatan ?? this.catatan,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (totalSistemTunai.present) {
+      map['total_sistem_tunai'] = Variable<int>(totalSistemTunai.value);
+    }
+    if (totalFisikTunai.present) {
+      map['total_fisik_tunai'] = Variable<int>(totalFisikTunai.value);
+    }
+    if (selisih.present) {
+      map['selisih'] = Variable<int>(selisih.value);
+    }
+    if (catatan.present) {
+      map['catatan'] = Variable<String>(catatan.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShiftReconciliationsCompanion(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('totalSistemTunai: $totalSistemTunai, ')
+          ..write('totalFisikTunai: $totalFisikTunai, ')
+          ..write('selisih: $selisih, ')
+          ..write('catatan: $catatan, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1307,6 +1784,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionItemsTable transactionItems = $TransactionItemsTable(
     this,
   );
+  late final $ShiftReconciliationsTable shiftReconciliations =
+      $ShiftReconciliationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1315,6 +1794,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ticketCategories,
     transactions,
     transactionItems,
+    shiftReconciliations,
   ];
 }
 
@@ -2016,6 +2496,264 @@ typedef $$TransactionItemsTableProcessedTableManager =
       TransactionItem,
       PrefetchHooks Function()
     >;
+typedef $$ShiftReconciliationsTableCreateCompanionBuilder =
+    ShiftReconciliationsCompanion Function({
+      required String id,
+      required String deviceId,
+      required int totalSistemTunai,
+      required int totalFisikTunai,
+      required int selisih,
+      Value<String?> catatan,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$ShiftReconciliationsTableUpdateCompanionBuilder =
+    ShiftReconciliationsCompanion Function({
+      Value<String> id,
+      Value<String> deviceId,
+      Value<int> totalSistemTunai,
+      Value<int> totalFisikTunai,
+      Value<int> selisih,
+      Value<String?> catatan,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$ShiftReconciliationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ShiftReconciliationsTable> {
+  $$ShiftReconciliationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalSistemTunai => $composableBuilder(
+    column: $table.totalSistemTunai,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalFisikTunai => $composableBuilder(
+    column: $table.totalFisikTunai,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get selisih => $composableBuilder(
+    column: $table.selisih,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get catatan => $composableBuilder(
+    column: $table.catatan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ShiftReconciliationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ShiftReconciliationsTable> {
+  $$ShiftReconciliationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalSistemTunai => $composableBuilder(
+    column: $table.totalSistemTunai,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalFisikTunai => $composableBuilder(
+    column: $table.totalFisikTunai,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get selisih => $composableBuilder(
+    column: $table.selisih,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get catatan => $composableBuilder(
+    column: $table.catatan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ShiftReconciliationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ShiftReconciliationsTable> {
+  $$ShiftReconciliationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<int> get totalSistemTunai => $composableBuilder(
+    column: $table.totalSistemTunai,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalFisikTunai => $composableBuilder(
+    column: $table.totalFisikTunai,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get selisih =>
+      $composableBuilder(column: $table.selisih, builder: (column) => column);
+
+  GeneratedColumn<String> get catatan =>
+      $composableBuilder(column: $table.catatan, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$ShiftReconciliationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ShiftReconciliationsTable,
+          ShiftReconciliation,
+          $$ShiftReconciliationsTableFilterComposer,
+          $$ShiftReconciliationsTableOrderingComposer,
+          $$ShiftReconciliationsTableAnnotationComposer,
+          $$ShiftReconciliationsTableCreateCompanionBuilder,
+          $$ShiftReconciliationsTableUpdateCompanionBuilder,
+          (
+            ShiftReconciliation,
+            BaseReferences<
+              _$AppDatabase,
+              $ShiftReconciliationsTable,
+              ShiftReconciliation
+            >,
+          ),
+          ShiftReconciliation,
+          PrefetchHooks Function()
+        > {
+  $$ShiftReconciliationsTableTableManager(
+    _$AppDatabase db,
+    $ShiftReconciliationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ShiftReconciliationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ShiftReconciliationsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ShiftReconciliationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<int> totalSistemTunai = const Value.absent(),
+                Value<int> totalFisikTunai = const Value.absent(),
+                Value<int> selisih = const Value.absent(),
+                Value<String?> catatan = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ShiftReconciliationsCompanion(
+                id: id,
+                deviceId: deviceId,
+                totalSistemTunai: totalSistemTunai,
+                totalFisikTunai: totalFisikTunai,
+                selisih: selisih,
+                catatan: catatan,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String deviceId,
+                required int totalSistemTunai,
+                required int totalFisikTunai,
+                required int selisih,
+                Value<String?> catatan = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ShiftReconciliationsCompanion.insert(
+                id: id,
+                deviceId: deviceId,
+                totalSistemTunai: totalSistemTunai,
+                totalFisikTunai: totalFisikTunai,
+                selisih: selisih,
+                catatan: catatan,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ShiftReconciliationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ShiftReconciliationsTable,
+      ShiftReconciliation,
+      $$ShiftReconciliationsTableFilterComposer,
+      $$ShiftReconciliationsTableOrderingComposer,
+      $$ShiftReconciliationsTableAnnotationComposer,
+      $$ShiftReconciliationsTableCreateCompanionBuilder,
+      $$ShiftReconciliationsTableUpdateCompanionBuilder,
+      (
+        ShiftReconciliation,
+        BaseReferences<
+          _$AppDatabase,
+          $ShiftReconciliationsTable,
+          ShiftReconciliation
+        >,
+      ),
+      ShiftReconciliation,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2026,4 +2764,6 @@ class $AppDatabaseManager {
       $$TransactionsTableTableManager(_db, _db.transactions);
   $$TransactionItemsTableTableManager get transactionItems =>
       $$TransactionItemsTableTableManager(_db, _db.transactionItems);
+  $$ShiftReconciliationsTableTableManager get shiftReconciliations =>
+      $$ShiftReconciliationsTableTableManager(_db, _db.shiftReconciliations);
 }
