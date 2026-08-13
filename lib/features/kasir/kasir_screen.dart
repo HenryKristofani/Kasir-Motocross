@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
+import '../../providers/kuota_helper.dart';
 import '../../data/local/database.dart';
 import '../settings/kategori_tiket_screen.dart';
 
@@ -23,6 +24,33 @@ class KasirScreen extends ConsumerWidget {
     if (cart.isEmpty) return;
 
     final db = ref.read(databaseProvider);
+
+    // Validasi kuota real-time sebelum transaksi
+    final sisaKuotaMap = await calculateSisaKuotaPerKategori(db, kategoris);
+    
+    for (final entry in cart.entries) {
+      final cat = kategoris.firstWhere((c) => c.id == entry.key);
+      
+      // Jika kategori punya quota, validasi qty tidak melebihi sisa
+      if (cat.quota != null) {
+        final sisaKuota = sisaKuotaMap[cat.id] ?? 0;
+        if (entry.value > sisaKuota) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Kuota ${cat.name} tidak mencukupi! Sisa: $sisaKuota, diminta: ${entry.value}',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return; // Batalkan transaksi
+        }
+      }
+    }
+
+    // Validasi lolos, lanjutkan simpan transaksi
     final uuid = const Uuid().v4();
     final total = ref.read(cartProvider.notifier).total(kategoris);
 
@@ -60,7 +88,13 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Daftar kategori tiket — dipakai di kedua layout (portrait & landscape)
-  Widget _buildCategoryList(BuildContext context, WidgetRef ref, Map<String, int> cart, List<TicketCategoryModel> kategoris) {
+  Widget _buildCategoryList(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, int> cart,
+    List<TicketCategoryModel> kategoris,
+    Map<String, int> sisaKuotaMap,
+  ) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
       itemCount: kategoris.length,
@@ -68,72 +102,147 @@ class KasirScreen extends ConsumerWidget {
         final cat = kategoris[index];
         final qty = cart[cat.id] ?? 0;
         final selected = qty > 0;
+        final sisaKuota = sisaKuotaMap[cat.id];
+        final isHabis = cat.quota != null && sisaKuota == 0;
 
         return Card(
           margin: const EdgeInsets.only(bottom: 10),
-          color: selected ? AppColors.safetyOrange.withValues(alpha: 0.06) : Colors.white,
+          color: isHabis
+              ? AppColors.asphalt.withValues(alpha: 0.05)
+              : selected
+                  ? AppColors.safetyOrange.withValues(alpha: 0.06)
+                  : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
-              color: selected ? AppColors.safetyOrange : AppColors.asphalt.withValues(alpha: 0.08),
+              color: isHabis
+                  ? Colors.grey.withValues(alpha: 0.3)
+                  : selected
+                      ? AppColors.safetyOrange
+                      : AppColors.asphalt.withValues(alpha: 0.08),
               width: selected ? 1.5 : 1,
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                // Badge nomor kategori — kesan plat/bib nomor balap
-                Container(
-                  width: 44,
-                  height: 44,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.asphalt,
-                    borderRadius: BorderRadius.circular(8),
+          child: Opacity(
+            opacity: isHabis ? 0.6 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  // Badge nomor kategori — kesan plat/bib nomor balap
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isHabis ? Colors.grey : AppColors.asphalt,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: isHabis
+                        ? const Text(
+                            'X',
+                            style: TextStyle(
+                              color: AppColors.trackWhite,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          )
+                        : Text(
+                            cat.name.substring(0, cat.name.length >= 2 ? 2 : 1).toUpperCase(),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.trackWhite,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                   ),
-                  child: Text(
-                    cat.name.substring(0, cat.name.length >= 2 ? 2 : 1).toUpperCase(),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.trackWhite,
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(width: 8),
+                            if (isHabis)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.red, width: 1),
+                                ),
+                                child: Text(
+                                  'HABIS',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                              ),
+                          ],
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(_formatRupiah(cat.price), style: Theme.of(context).textTheme.bodyMedium),
+                            if (cat.quota != null && sisaKuota != null) ...[
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.safetyOrange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: AppColors.safetyOrange,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Sisa: $sisaKuota',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.safetyOrange,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 2),
-                      Text(_formatRupiah(cat.price), style: Theme.of(context).textTheme.bodyMedium),
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.remove),
+                        onPressed: qty > 0 ? () => ref.read(cartProvider.notifier).decrement(cat.id) : null,
+                      ),
+                      SizedBox(
+                        width: 32,
+                        child: Text(
+                          '$qty',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      IconButton.filled(
+                        icon: const Icon(Icons.add),
+                        // Disable tombol + jika kuota habis atau qty sudah mencapai sisa kuota
+                        onPressed: isHabis || (cat.quota != null && qty >= (sisaKuota ?? 0))
+                            ? null
+                            : () => ref.read(cartProvider.notifier).increment(cat.id),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isHabis || (cat.quota != null && qty >= (sisaKuota ?? 0))
+                              ? Colors.grey
+                              : AppColors.safetyOrange,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton.filledTonal(
-                      icon: const Icon(Icons.remove),
-                      onPressed: qty > 0 ? () => ref.read(cartProvider.notifier).decrement(cat.id) : null,
-                    ),
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        '$qty',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    IconButton.filled(
-                      icon: const Icon(Icons.add),
-                      onPressed: () => ref.read(cartProvider.notifier).increment(cat.id),
-                      style: IconButton.styleFrom(backgroundColor: AppColors.safetyOrange),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -142,7 +251,14 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Panel ringkasan keranjang untuk mode landscape — dengan scroll untuk item banyak
-  Widget _buildCartSummaryPanel(BuildContext context, WidgetRef ref, Map<String, int> cart, int total, List<TicketCategoryModel> kategoris) {
+  Widget _buildCartSummaryPanel(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, int> cart,
+    int total,
+    List<TicketCategoryModel> kategoris,
+    Map<String, int> sisaKuotaMap,
+  ) {
     return Container(
       width: 320,
       padding: const EdgeInsets.all(20),
@@ -212,7 +328,14 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Bottom bar ringkasan untuk mode portrait — minimal height, no scroll
-  Widget _buildCartSummaryBottomBar(BuildContext context, WidgetRef ref, Map<String, int> cart, int total, List<TicketCategoryModel> kategoris) {
+  Widget _buildCartSummaryBottomBar(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, int> cart,
+    int total,
+    List<TicketCategoryModel> kategoris,
+    Map<String, int> sisaKuotaMap,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -302,26 +425,39 @@ class KasirScreen extends ConsumerWidget {
             );
           }
 
-          final total = ref.read(cartProvider.notifier).total(kategoris);
+          // Watch sisa kuota per kategori
+          final sisaKuotaAsync = ref.watch(sisaKuotaPerKategoriProvider);
 
-          return OrientationBuilder(
-            builder: (context, orientation) {
-              if (orientation == Orientation.landscape) {
-                // Landscape: split-view — list kiri, ringkasan panel tetap di kanan dengan scroll
-                return Row(
-                  children: [
-                    Expanded(child: _buildCategoryList(context, ref, cart, kategoris)),
-                    _buildCartSummaryPanel(context, ref, cart, total, kategoris),
-                  ],
-                );
-              }
+          return sisaKuotaAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, st) => Center(child: Text('Error: $err')),
+            data: (sisaKuotaMap) {
+              final total = ref.read(cartProvider.notifier).total(kategoris);
 
-              // Portrait: list penuh + bottom bar ringkasan minimal
-              return Column(
-                children: [
-                  Expanded(child: _buildCategoryList(context, ref, cart, kategoris)),
-                  _buildCartSummaryBottomBar(context, ref, cart, total, kategoris),
-                ],
+              return OrientationBuilder(
+                builder: (context, orientation) {
+                  if (orientation == Orientation.landscape) {
+                    // Landscape: split-view — list kiri, ringkasan panel tetap di kanan dengan scroll
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
+                        ),
+                        _buildCartSummaryPanel(context, ref, cart, total, kategoris, sisaKuotaMap),
+                      ],
+                    );
+                  }
+
+                  // Portrait: list penuh + bottom bar ringkasan minimal
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
+                      ),
+                      _buildCartSummaryBottomBar(context, ref, cart, total, kategoris, sisaKuotaMap),
+                    ],
+                  );
+                },
               );
             },
           );
