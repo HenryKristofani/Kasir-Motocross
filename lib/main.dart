@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/kasir/kasir_screen.dart';
 import 'features/riwayat/riwayat_screen.dart';
 import 'features/settings/kategori_tiket_screen.dart';
+import 'features/rekap/rekap_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/init_provider.dart';
 
@@ -37,6 +38,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
     KasirScreen(),
     RiwayatScreen(),
     KategoriTiketScreen(),
+    RekapScreen(),
   ];
 
   @override
@@ -59,6 +61,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
           NavigationDestination(icon: Icon(Icons.point_of_sale), label: 'Kasir'),
           NavigationDestination(icon: Icon(Icons.history), label: 'Riwayat'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Kategori'),
+          NavigationDestination(icon: Icon(Icons.assessment), label: 'Rekap'),
         ],
       ),
     );
