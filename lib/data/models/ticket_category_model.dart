@@ -2,11 +2,13 @@ class TicketCategoryModel {
   final String id;
   final String name;
   final int price;
+  final int? quota;
 
   const TicketCategoryModel({
     required this.id,
     required this.name,
     required this.price,
+    this.quota,
   });
 }
 

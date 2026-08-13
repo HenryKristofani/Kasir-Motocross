@@ -6,6 +6,7 @@ import '../../data/models/ticket_category_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
+import '../settings/kategori_tiket_screen.dart';
 
 class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
@@ -17,13 +18,13 @@ class KasirScreen extends ConsumerWidget {
     )}';
   }
 
-  Future<void> _bayar(BuildContext context, WidgetRef ref) async {
+  Future<void> _bayar(BuildContext context, WidgetRef ref, List<TicketCategoryModel> kategoris) async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
     final db = ref.read(databaseProvider);
     final uuid = const Uuid().v4();
-    final total = ref.read(cartProvider.notifier).total(dummyTicketCategories);
+    final total = ref.read(cartProvider.notifier).total(kategoris);
 
     await db.into(db.transactions).insert(
       TransactionsCompanion.insert(
@@ -37,7 +38,7 @@ class KasirScreen extends ConsumerWidget {
     );
 
     for (final entry in cart.entries) {
-      final cat = dummyTicketCategories.firstWhere((c) => c.id == entry.key);
+      final cat = kategoris.firstWhere((c) => c.id == entry.key);
       await db.into(db.transactionItems).insert(
         TransactionItemsCompanion.insert(
           id: const Uuid().v4(),
@@ -59,12 +60,12 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Daftar kategori tiket — dipakai di kedua layout (portrait & landscape)
-  Widget _buildCategoryList(BuildContext context, WidgetRef ref, Map<String, int> cart) {
+  Widget _buildCategoryList(BuildContext context, WidgetRef ref, Map<String, int> cart, List<TicketCategoryModel> kategoris) {
     return ListView.builder(
       padding: const EdgeInsets.all(12),
-      itemCount: dummyTicketCategories.length,
+      itemCount: kategoris.length,
       itemBuilder: (context, index) {
-        final cat = dummyTicketCategories[index];
+        final cat = kategoris[index];
         final qty = cart[cat.id] ?? 0;
         final selected = qty > 0;
 
@@ -141,7 +142,7 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Panel ringkasan keranjang untuk mode landscape — dengan scroll untuk item banyak
-  Widget _buildCartSummaryPanel(BuildContext context, WidgetRef ref, Map<String, int> cart, int total) {
+  Widget _buildCartSummaryPanel(BuildContext context, WidgetRef ref, Map<String, int> cart, int total, List<TicketCategoryModel> kategoris) {
     return Container(
       width: 320,
       padding: const EdgeInsets.all(20),
@@ -171,7 +172,7 @@ class KasirScreen extends ConsumerWidget {
                     )
                   : ListView(
                       children: cart.entries.map((e) {
-                        final cat = dummyTicketCategories.firstWhere((c) => c.id == e.key);
+                        final cat = kategoris.firstWhere((c) => c.id == e.key);
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Row(
@@ -200,7 +201,7 @@ class KasirScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _bayar(context, ref),
+                onPressed: cart.isEmpty ? null : () => _bayar(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -211,7 +212,7 @@ class KasirScreen extends ConsumerWidget {
   }
 
   // Bottom bar ringkasan untuk mode portrait — minimal height, no scroll
-  Widget _buildCartSummaryBottomBar(BuildContext context, WidgetRef ref, Map<String, int> cart, int total) {
+  Widget _buildCartSummaryBottomBar(BuildContext context, WidgetRef ref, Map<String, int> cart, int total, List<TicketCategoryModel> kategoris) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -235,7 +236,7 @@ class KasirScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _bayar(context, ref),
+                onPressed: cart.isEmpty ? null : () => _bayar(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -248,28 +249,81 @@ class KasirScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = ref.watch(cartProvider);
-    final total = ref.read(cartProvider.notifier).total(dummyTicketCategories);
+    final kategoriStream = ref.watch(kategoriTiketStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('KASIR — TIKET MOTOCROSS')),
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          if (orientation == Orientation.landscape) {
-            // Landscape: split-view — list kiri, ringkasan panel tetap di kanan dengan scroll
-            return Row(
-              children: [
-                Expanded(child: _buildCategoryList(context, ref, cart)),
-                _buildCartSummaryPanel(context, ref, cart, total),
-              ],
+      appBar: AppBar(
+        title: const Text('KASIR — TIKET MOTOCROSS'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: kategoriStream.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, st) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error: $err'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.refresh(kategoriTiketStreamProvider),
+                child: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+        data: (kategoris) {
+          if (kategoris.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.category_outlined, size: 64, color: AppColors.asphalt.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada kategori tiket',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
+                    ),
+                    child: const Text('Tambah Kategori'),
+                  ),
+                ],
+              ),
             );
           }
 
-          // Portrait: list penuh + bottom bar ringkasan minimal
-          return Column(
-            children: [
-              Expanded(child: _buildCategoryList(context, ref, cart)),
-              _buildCartSummaryBottomBar(context, ref, cart, total),
-            ],
+          final total = ref.read(cartProvider.notifier).total(kategoris);
+
+          return OrientationBuilder(
+            builder: (context, orientation) {
+              if (orientation == Orientation.landscape) {
+                // Landscape: split-view — list kiri, ringkasan panel tetap di kanan dengan scroll
+                return Row(
+                  children: [
+                    Expanded(child: _buildCategoryList(context, ref, cart, kategoris)),
+                    _buildCartSummaryPanel(context, ref, cart, total, kategoris),
+                  ],
+                );
+              }
+
+              // Portrait: list penuh + bottom bar ringkasan minimal
+              return Column(
+                children: [
+                  Expanded(child: _buildCategoryList(context, ref, cart, kategoris)),
+                  _buildCartSummaryBottomBar(context, ref, cart, total, kategoris),
+                ],
+              );
+            },
           );
         },
       ),
