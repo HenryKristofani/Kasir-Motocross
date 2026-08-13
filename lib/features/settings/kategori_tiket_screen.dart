@@ -263,12 +263,14 @@ class KategoriTiketScreen extends ConsumerWidget {
                     PopupMenuItem(
                       child: const Text('Edit'),
                       onTap: () => Future.microtask(
+                        // ignore: use_build_context_synchronously
                         () => _showKategoriDialog(context, ref, kategori: kategori),
                       ),
                     ),
                     PopupMenuItem(
                       child: const Text('Hapus', style: TextStyle(color: Colors.red)),
                       onTap: () => Future.microtask(
+                        // ignore: use_build_context_synchronously
                         () => _showDeleteConfirmDialog(context, ref, kategori),
                       ),
                     ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/models/rekap_penjualan_model.dart';
 import '../../providers/database_provider.dart';
 
 class RekapScreen extends ConsumerWidget {
@@ -296,7 +295,7 @@ class RekapScreen extends ConsumerWidget {
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           );
         },

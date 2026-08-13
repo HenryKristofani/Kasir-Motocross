@@ -391,6 +391,43 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isVoidedMeta = const VerificationMeta(
+    'isVoided',
+  );
+  @override
+  late final GeneratedColumn<bool> isVoided = GeneratedColumn<bool>(
+    'is_voided',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_voided" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _voidReasonMeta = const VerificationMeta(
+    'voidReason',
+  );
+  @override
+  late final GeneratedColumn<String> voidReason = GeneratedColumn<String>(
+    'void_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _voidedAtMeta = const VerificationMeta(
+    'voidedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> voidedAt = GeneratedColumn<DateTime>(
+    'voided_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -400,6 +437,9 @@ class $TransactionsTable extends Transactions
     paymentMethod,
     isSynced,
     createdAt,
+    isVoided,
+    voidReason,
+    voidedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -470,6 +510,24 @@ class $TransactionsTable extends Transactions
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('is_voided')) {
+      context.handle(
+        _isVoidedMeta,
+        isVoided.isAcceptableOrUnknown(data['is_voided']!, _isVoidedMeta),
+      );
+    }
+    if (data.containsKey('void_reason')) {
+      context.handle(
+        _voidReasonMeta,
+        voidReason.isAcceptableOrUnknown(data['void_reason']!, _voidReasonMeta),
+      );
+    }
+    if (data.containsKey('voided_at')) {
+      context.handle(
+        _voidedAtMeta,
+        voidedAt.isAcceptableOrUnknown(data['voided_at']!, _voidedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -507,6 +565,18 @@ class $TransactionsTable extends Transactions
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      isVoided: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_voided'],
+      )!,
+      voidReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}void_reason'],
+      ),
+      voidedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}voided_at'],
+      ),
     );
   }
 
@@ -524,6 +594,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String paymentMethod;
   final bool isSynced;
   final DateTime createdAt;
+  final bool isVoided;
+  final String? voidReason;
+  final DateTime? voidedAt;
   const Transaction({
     required this.id,
     required this.localNumber,
@@ -532,6 +605,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.paymentMethod,
     required this.isSynced,
     required this.createdAt,
+    required this.isVoided,
+    this.voidReason,
+    this.voidedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -543,6 +619,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['payment_method'] = Variable<String>(paymentMethod);
     map['is_synced'] = Variable<bool>(isSynced);
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_voided'] = Variable<bool>(isVoided);
+    if (!nullToAbsent || voidReason != null) {
+      map['void_reason'] = Variable<String>(voidReason);
+    }
+    if (!nullToAbsent || voidedAt != null) {
+      map['voided_at'] = Variable<DateTime>(voidedAt);
+    }
     return map;
   }
 
@@ -555,6 +638,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       paymentMethod: Value(paymentMethod),
       isSynced: Value(isSynced),
       createdAt: Value(createdAt),
+      isVoided: Value(isVoided),
+      voidReason: voidReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidReason),
+      voidedAt: voidedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voidedAt),
     );
   }
 
@@ -571,6 +661,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isVoided: serializer.fromJson<bool>(json['isVoided']),
+      voidReason: serializer.fromJson<String?>(json['voidReason']),
+      voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
     );
   }
   @override
@@ -584,6 +677,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'isSynced': serializer.toJson<bool>(isSynced),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isVoided': serializer.toJson<bool>(isVoided),
+      'voidReason': serializer.toJson<String?>(voidReason),
+      'voidedAt': serializer.toJson<DateTime?>(voidedAt),
     };
   }
 
@@ -595,6 +691,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     String? paymentMethod,
     bool? isSynced,
     DateTime? createdAt,
+    bool? isVoided,
+    Value<String?> voidReason = const Value.absent(),
+    Value<DateTime?> voidedAt = const Value.absent(),
   }) => Transaction(
     id: id ?? this.id,
     localNumber: localNumber ?? this.localNumber,
@@ -603,6 +702,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     paymentMethod: paymentMethod ?? this.paymentMethod,
     isSynced: isSynced ?? this.isSynced,
     createdAt: createdAt ?? this.createdAt,
+    isVoided: isVoided ?? this.isVoided,
+    voidReason: voidReason.present ? voidReason.value : this.voidReason,
+    voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
   );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -617,6 +719,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : this.paymentMethod,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isVoided: data.isVoided.present ? data.isVoided.value : this.isVoided,
+      voidReason: data.voidReason.present
+          ? data.voidReason.value
+          : this.voidReason,
+      voidedAt: data.voidedAt.present ? data.voidedAt.value : this.voidedAt,
     );
   }
 
@@ -629,7 +736,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('total: $total, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('isSynced: $isSynced, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isVoided: $isVoided, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedAt: $voidedAt')
           ..write(')'))
         .toString();
   }
@@ -643,6 +753,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     paymentMethod,
     isSynced,
     createdAt,
+    isVoided,
+    voidReason,
+    voidedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -654,7 +767,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.total == this.total &&
           other.paymentMethod == this.paymentMethod &&
           other.isSynced == this.isSynced &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.isVoided == this.isVoided &&
+          other.voidReason == this.voidReason &&
+          other.voidedAt == this.voidedAt);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -665,6 +781,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> paymentMethod;
   final Value<bool> isSynced;
   final Value<DateTime> createdAt;
+  final Value<bool> isVoided;
+  final Value<String?> voidReason;
+  final Value<DateTime?> voidedAt;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -674,6 +793,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.paymentMethod = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isVoided = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -684,6 +806,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String paymentMethod,
     this.isSynced = const Value.absent(),
     required DateTime createdAt,
+    this.isVoided = const Value.absent(),
+    this.voidReason = const Value.absent(),
+    this.voidedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        localNumber = Value(localNumber),
@@ -699,6 +824,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? paymentMethod,
     Expression<bool>? isSynced,
     Expression<DateTime>? createdAt,
+    Expression<bool>? isVoided,
+    Expression<String>? voidReason,
+    Expression<DateTime>? voidedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -709,6 +837,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (isSynced != null) 'is_synced': isSynced,
       if (createdAt != null) 'created_at': createdAt,
+      if (isVoided != null) 'is_voided': isVoided,
+      if (voidReason != null) 'void_reason': voidReason,
+      if (voidedAt != null) 'voided_at': voidedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -721,6 +852,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String>? paymentMethod,
     Value<bool>? isSynced,
     Value<DateTime>? createdAt,
+    Value<bool>? isVoided,
+    Value<String?>? voidReason,
+    Value<DateTime?>? voidedAt,
     Value<int>? rowid,
   }) {
     return TransactionsCompanion(
@@ -731,6 +865,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       isSynced: isSynced ?? this.isSynced,
       createdAt: createdAt ?? this.createdAt,
+      isVoided: isVoided ?? this.isVoided,
+      voidReason: voidReason ?? this.voidReason,
+      voidedAt: voidedAt ?? this.voidedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -759,6 +896,15 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (isVoided.present) {
+      map['is_voided'] = Variable<bool>(isVoided.value);
+    }
+    if (voidReason.present) {
+      map['void_reason'] = Variable<String>(voidReason.value);
+    }
+    if (voidedAt.present) {
+      map['voided_at'] = Variable<DateTime>(voidedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -775,6 +921,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('isSynced: $isSynced, ')
           ..write('createdAt: $createdAt, ')
+          ..write('isVoided: $isVoided, ')
+          ..write('voidReason: $voidReason, ')
+          ..write('voidedAt: $voidedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1365,6 +1514,9 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required String paymentMethod,
       Value<bool> isSynced,
       required DateTime createdAt,
+      Value<bool> isVoided,
+      Value<String?> voidReason,
+      Value<DateTime?> voidedAt,
       Value<int> rowid,
     });
 typedef $$TransactionsTableUpdateCompanionBuilder =
@@ -1376,6 +1528,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> paymentMethod,
       Value<bool> isSynced,
       Value<DateTime> createdAt,
+      Value<bool> isVoided,
+      Value<String?> voidReason,
+      Value<DateTime?> voidedAt,
       Value<int> rowid,
     });
 
@@ -1420,6 +1575,21 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isVoided => $composableBuilder(
+    column: $table.isVoided,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get voidedAt => $composableBuilder(
+    column: $table.voidedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1467,6 +1637,21 @@ class $$TransactionsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isVoided => $composableBuilder(
+    column: $table.isVoided,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get voidedAt => $composableBuilder(
+    column: $table.voidedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TransactionsTableAnnotationComposer
@@ -1502,6 +1687,17 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isVoided =>
+      $composableBuilder(column: $table.isVoided, builder: (column) => column);
+
+  GeneratedColumn<String> get voidReason => $composableBuilder(
+    column: $table.voidReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get voidedAt =>
+      $composableBuilder(column: $table.voidedAt, builder: (column) => column);
 }
 
 class $$TransactionsTableTableManager
@@ -1542,6 +1738,9 @@ class $$TransactionsTableTableManager
                 Value<String> paymentMethod = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isVoided = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<DateTime?> voidedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion(
                 id: id,
@@ -1551,6 +1750,9 @@ class $$TransactionsTableTableManager
                 paymentMethod: paymentMethod,
                 isSynced: isSynced,
                 createdAt: createdAt,
+                isVoided: isVoided,
+                voidReason: voidReason,
+                voidedAt: voidedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1562,6 +1764,9 @@ class $$TransactionsTableTableManager
                 required String paymentMethod,
                 Value<bool> isSynced = const Value.absent(),
                 required DateTime createdAt,
+                Value<bool> isVoided = const Value.absent(),
+                Value<String?> voidReason = const Value.absent(),
+                Value<DateTime?> voidedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionsCompanion.insert(
                 id: id,
@@ -1571,6 +1776,9 @@ class $$TransactionsTableTableManager
                 paymentMethod: paymentMethod,
                 isSynced: isSynced,
                 createdAt: createdAt,
+                isVoided: isVoided,
+                voidReason: voidReason,
+                voidedAt: voidedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

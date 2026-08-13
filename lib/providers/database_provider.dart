@@ -45,7 +45,8 @@ final transactionItemsStreamProvider = StreamProvider<List<TransactionItem>>((re
 final sisaKuotaPerKategoriProvider = FutureProvider<Map<String, int>>((ref) async {
   final db = ref.watch(databaseProvider);
   final kategoris = await ref.watch(kategoriTiketStreamProvider.future);
-  final _ = ref.watch(transactionItemsStreamProvider); // Trigger recompute ketika transaction items berubah
+  ref.watch(transactionItemsStreamProvider); // Trigger recompute ketika transaction items berubah
+  ref.watch(transactionsStreamProvider); // Trigger recompute ketika transaksi di-void (isVoided berubah)
   
   return calculateSisaKuotaPerKategori(db, kategoris);
 });
@@ -54,25 +55,31 @@ final sisaKuotaPerKategoriProvider = FutureProvider<Map<String, int>>((ref) asyn
 final rekapPeriodFilterProvider = StateProvider<PeriodFilter>((ref) => PeriodFilter.hariIni);
 
 // Provider untuk rekap penjualan per kategori dengan filter periode
+// EXCLUDE transaksi yang di-void (isVoided = true)
 final rekapPenjualanProvider = FutureProvider<List<RekapPenjualanItem>>((ref) async {
   final db = ref.watch(databaseProvider);
   final periodFilter = ref.watch(rekapPeriodFilterProvider);
-  final _ = ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
-  final __ = ref.watch(transactionItemsStreamProvider); // Trigger update saat items berubah
+  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
+  ref.watch(transactionItemsStreamProvider); // Trigger update saat items berubah
   
   // Hitung periode filter
   final DateTime now = DateTime.now();
   final DateTime startOfDay = DateTime(now.year, now.month, now.day);
   final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
   
-  // Query transaction berdasarkan filter periode
+  // Query transaction berdasarkan filter periode dan BUKAN voided
   final query = db.select(db.transactions);
   final List<Transaction> transactions;
   
   if (periodFilter == PeriodFilter.hariIni) {
-    transactions = await (query..where((t) => t.createdAt.isBiggerOrEqualValue(startOfDay) & t.createdAt.isSmallerThanValue(endOfDay))).get();
+    transactions = await (query
+          ..where((t) => 
+            t.createdAt.isBiggerOrEqualValue(startOfDay) & 
+            t.createdAt.isSmallerThanValue(endOfDay) &
+            t.isVoided.equals(false)))
+        .get();
   } else {
-    transactions = await query.get();
+    transactions = await (query..where((t) => t.isVoided.equals(false))).get();
   }
   
   // Ambil transaction IDs untuk filter items

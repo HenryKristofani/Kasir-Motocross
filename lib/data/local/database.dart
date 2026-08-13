@@ -24,6 +24,9 @@ class Transactions extends Table {
   TextColumn get paymentMethod => text()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
+  BoolColumn get isVoided => boolean().withDefault(const Constant(false))();
+  TextColumn get voidReason => text().nullable()();
+  DateTimeColumn get voidedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -45,7 +48,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onUpgrade: (m, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Add new columns untuk void transaksi
+          await m.addColumn(transactions, transactions.isVoided);
+          await m.addColumn(transactions, transactions.voidReason);
+          await m.addColumn(transactions, transactions.voidedAt);
+        }
+      },
+    );
+  }
 
   static LazyDatabase _openConnection() {
     return LazyDatabase(() async {
