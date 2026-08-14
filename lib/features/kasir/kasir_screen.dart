@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
@@ -49,7 +50,7 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _bayar(context, ref, kategoris, PaymentConstants.tunai);
+              _showCashPaymentDialog(context, ref, kategoris);
             },
             icon: const Icon(Icons.payments),
             label: const Text('Tunai'),
@@ -61,7 +62,7 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _bayar(context, ref, kategoris, PaymentConstants.qris);
+              _showQRISPaymentDialog(context, ref, kategoris);
             },
             icon: const Icon(Icons.qr_code),
             label: const Text('QRIS'),
@@ -69,6 +70,225 @@ class KasirScreen extends ConsumerWidget {
               backgroundColor: AppColors.dirtTan,
               foregroundColor: Colors.white,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCashPaymentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+  ) {
+    final total = ref.read(cartProvider.notifier).total(kategoris);
+    final uangMasukController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final uangMasuk = int.tryParse(uangMasukController.text) ?? 0;
+            final kembalian = uangMasuk - total;
+            final isValid = uangMasuk >= total;
+
+            return AlertDialog(
+              title: const Text('Pembayaran Tunai'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    Text(
+                      'Total Tagihan',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.asphalt.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.asphalt.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.asphalt.withValues(alpha: 0.1)),
+                      ),
+                      child: Text(
+                        _formatRupiah(total),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppColors.asphalt,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: uangMasukController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Uang Masuk',
+                        hintText: '0',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        prefixText: 'Rp ',
+                        prefixStyle: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Uang Kembali',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.asphalt.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kembalian >= 0
+                            ? AppColors.safetyOrange.withValues(alpha: 0.08)
+                            : Colors.red.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: kembalian >= 0
+                              ? AppColors.safetyOrange.withValues(alpha: 0.35)
+                              : Colors.red.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        _formatRupiah(kembalian),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: kembalian >= 0 ? AppColors.safetyOrange : Colors.red,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (!isValid) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Uang masuk belum cukup.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  onPressed: isValid
+                      ? () async {
+                          Navigator.pop(dialogContext);
+                          await _bayar(context, ref, kategoris, PaymentConstants.tunai);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.safetyOrange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Selesai'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showQRISPaymentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+  ) {
+    final total = ref.read(cartProvider.notifier).total(kategoris);
+    final qrData = 'motocross-pay-$total-${DateTime.now().millisecondsSinceEpoch}';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Pembayaran QRIS'),
+        content: SizedBox(
+          width: 300,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Tagihan',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.asphalt.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatRupiah(total),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppColors.asphalt,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.asphalt.withValues(alpha: 0.08)),
+                    ),
+                    child: QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 200,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Kode QRIS untuk pembayaran',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.asphalt.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _bayar(context, ref, kategoris, PaymentConstants.qris);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.dirtTan,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Selesai'),
           ),
         ],
       ),
