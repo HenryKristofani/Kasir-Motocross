@@ -166,6 +166,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
   Widget build(BuildContext context) {
     final rekapAsync = ref.watch(rekapPenjualanHariIniProvider);
     final totalSistemAsync = ref.watch(totalSistemTunaiHariIniProvider);
+    final totalKeseluruhanAsync = ref.watch(totalKeseluruhanHariIniProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -215,38 +216,49 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
             orElse: () => 0,
           );
 
+          // Total keseluruhan hari ini - semua metode pembayaran, info tambahan
+          final totalKeseluruhanHariIni = totalKeseluruhanAsync.maybeWhen(
+            data: (value) => value,
+            orElse: () => 0,
+          );
+
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Header - Total Sistem
+              // Total Keseluruhan Hari Ini (ringkasan utama, info tambahan)
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.asphalt,
+                  color: AppColors.trackWhite,
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.dirtTan.withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Total Sistem',
+                      'Total Keseluruhan Hari Ini',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.trackWhite.withValues(alpha: 0.7),
+                            color: AppColors.charcoal,
+                            fontWeight: FontWeight.w600,
                           ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _formatRupiah(totalSistemTunai),
+                      _formatRupiah(totalKeseluruhanHariIni),
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppColors.safetyOrange,
+                            color: AppColors.dirtTan,
                             fontWeight: FontWeight.w700,
                           ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Metode: Tunai',
+                      'Termasuk semua metode pembayaran',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.trackWhite.withValues(alpha: 0.7),
+                            color: AppColors.charcoal.withValues(alpha: 0.7),
                           ),
                     ),
                   ],

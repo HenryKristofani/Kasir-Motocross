@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../core/theme/app_theme.dart';
+import '../../core/constants/payment_constants.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
 import '../shift/rekonsiliasi_screen.dart';
@@ -186,11 +187,34 @@ class RiwayatScreen extends ConsumerWidget {
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  DateFormat('HH:mm:ss').format(t.createdAt),
-                                  style: TextStyle(
-                                    color: isVoided ? Colors.grey[500] : null,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      DateFormat('HH:mm:ss').format(t.createdAt),
+                                      style: TextStyle(
+                                        color: isVoided ? Colors.grey[500] : null,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.dirtTan.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        PaymentConstants.getDisplayName(t.paymentMethod),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.dirtTan,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 if (isVoided && t.voidedAt != null)
                                   Padding(

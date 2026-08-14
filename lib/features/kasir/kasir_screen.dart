@@ -20,7 +20,67 @@ class KasirScreen extends ConsumerWidget {
     )}';
   }
 
-  Future<void> _bayar(BuildContext context, WidgetRef ref, List<TicketCategoryModel> kategoris) async {
+  void _showPaymentMethodDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Pilih Metode Pembayaran'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              'Pilih metode pembayaran untuk melanjutkan transaksi:',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _bayar(context, ref, kategoris, PaymentConstants.tunai);
+            },
+            icon: const Icon(Icons.payments),
+            label: const Text('Tunai'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.safetyOrange,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _bayar(context, ref, kategoris, PaymentConstants.qris);
+            },
+            icon: const Icon(Icons.qr_code),
+            label: const Text('QRIS'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.dirtTan,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _bayar(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+    String paymentMethod,
+  ) async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
@@ -61,7 +121,7 @@ class KasirScreen extends ConsumerWidget {
         localNumber: 'A-${DateTime.now().millisecondsSinceEpoch}',
         deviceId: 'device-dev-1',
         total: total,
-        paymentMethod: PaymentConstants.tunai,
+        paymentMethod: paymentMethod,
         createdAt: DateTime.now(),
       ),
     );
@@ -318,7 +378,7 @@ class KasirScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _bayar(context, ref, kategoris),
+                onPressed: cart.isEmpty ? null : () => _showPaymentMethodDialog(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -360,7 +420,7 @@ class KasirScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _bayar(context, ref, kategoris),
+                onPressed: cart.isEmpty ? null : () => _showPaymentMethodDialog(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),

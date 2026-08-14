@@ -204,6 +204,31 @@ final totalSistemTunaiHariIniProvider = FutureProvider<int>((ref) async {
   return total;
 });
 
+// Provider untuk total keseluruhan hari ini (semua metode pembayaran)
+// Ini hanya untuk info ringkasan, tidak digunakan untuk selisih tunai.
+final totalKeseluruhanHariIniProvider = FutureProvider<int>((ref) async {
+  final db = ref.watch(databaseProvider);
+  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
+
+  final DateTime now = DateTime.now();
+  final DateTime startOfDay = DateTime(now.year, now.month, now.day);
+  final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
+
+  final transactions = await (db.select(db.transactions)
+        ..where((t) =>
+          t.createdAt.isBiggerOrEqualValue(startOfDay) &
+          t.createdAt.isSmallerThanValue(endOfDay) &
+          t.isVoided.equals(false)))
+      .get();
+
+  int total = 0;
+  for (final transaction in transactions) {
+    total += transaction.total;
+  }
+
+  return total;
+});
+
 // Stream semua shift reconciliations, urut dari terbaru
 final shiftReconciliationsStreamProvider = StreamProvider<List<ShiftReconciliation>>((ref) {
   final db = ref.watch(databaseProvider);
