@@ -22,6 +22,25 @@ final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
       .watch();
 });
 
+// Tanggal aktif yang sedang dipilih di halaman Riwayat
+final selectedRiwayatDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+
+// Transaksi yang difilter per hari untuk halaman Riwayat
+final filteredTransactionsByDateProvider = Provider.family<List<Transaction>, DateTime>((ref, selectedDate) {
+  final allTransactions = ref.watch(transactionsStreamProvider).valueOrNull ?? const <Transaction>[];
+  final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+  final endOfDay = startOfDay.add(const Duration(days: 1));
+
+  final filtered = allTransactions.where((transaction) {
+    final createdAt = transaction.createdAt;
+    return createdAt.isAfter(startOfDay.subtract(const Duration(microseconds: 1))) &&
+        createdAt.isBefore(endOfDay);
+  }).toList();
+
+  filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return filtered;
+});
+
 // Stream semua kategori tiket dari database lokal, urut berdasarkan nama
 final kategoriTiketStreamProvider = StreamProvider<List<TicketCategoryModel>>((ref) {
   final db = ref.watch(databaseProvider);
