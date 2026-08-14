@@ -1,3 +1,4 @@
+import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../providers/kuota_helper.dart';
 import '../../data/local/database.dart';
+import '../../services/printer/printer_service.dart';
 import '../settings/kategori_tiket_screen.dart';
 
 class KasirScreen extends ConsumerWidget {
@@ -191,7 +193,14 @@ class KasirScreen extends ConsumerWidget {
                   onPressed: isValid
                       ? () async {
                           Navigator.pop(dialogContext);
-                          await _bayar(context, ref, kategoris, PaymentConstants.tunai);
+                          await _bayar(
+                            context,
+                            ref,
+                            kategoris,
+                            PaymentConstants.tunai,
+                            uangMasuk: uangMasuk,
+                            uangKembali: kembalian,
+                          );
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
@@ -306,12 +315,147 @@ class KasirScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _attemptPrintAfterSave({
+    required BuildContext context,
+    required WidgetRef ref,
+    required Transaction transaction,
+    required List<TicketCategoryModel> kategoris,
+    required String paymentMethod,
+    int? uangMasuk,
+    int? uangKembali,
+  }) async {
+    final db = ref.read(databaseProvider);
+    final items = await (db.select(db.transactionItems)
+          ..where((item) => item.transactionId.equals(transaction.id)))
+        .get();
+    final categoryRows = await db.select(db.ticketCategories).get();
+    final categoryMap = {
+      for (final category in categoryRows)
+        category.id: TicketCategoryModel(
+          id: category.id,
+          name: category.name,
+          price: category.price,
+          quota: category.quota,
+        ),
+    };
+
+    final result = await PrinterService.instance.printTransaction(
+      transaction: transaction,
+      items: items,
+      categories: categoryMap,
+      paymentMethod: paymentMethod,
+      uangMasuk: uangMasuk,
+      uangKembali: uangKembali,
+    );
+
+    if (!context.mounted) return;
+
+    if (result == PosPrintResult.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Transaksi tersimpan dan struk berhasil dicetak'),
+          backgroundColor: AppColors.safetyOrange,
+        ),
+      );
+      return;
+    }
+
+    final message = switch (result) {
+      PosPrintResult.printerNotSelected => 'Printer belum dipilih. Silakan pilih printer dulu.',
+      PosPrintResult.timeout => 'Waktu cetak habis. Printer mungkin tidak responsif.',
+      PosPrintResult.ticketEmpty => 'Data struk kosong.',
+      PosPrintResult.printInProgress => 'Printer sedang dipakai, coba sebentar lagi.',
+      PosPrintResult.scanInProgress => 'Pemindaian printer sedang berlangsung.',
+      _ => 'Gagal mencetak struk. Transaksi tetap tersimpan.',
+    };
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.orange[800],
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Coba print lagi',
+          onPressed: () async {
+            await _attemptPrintAfterSave(
+              context: context,
+              ref: ref,
+              transaction: transaction,
+              kategoris: kategoris,
+              paymentMethod: paymentMethod,
+              uangMasuk: uangMasuk,
+              uangKembali: uangKembali,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPrinterPickerDialog(BuildContext context, WidgetRef ref) async {
+    final devices = await PrinterService.instance.discoverPrinters(timeout: const Duration(seconds: 6));
+
+    if (!context.mounted) return;
+
+    if (devices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada printer Bluetooth yang terdeteksi. Pastikan printer telah dipasangkan.')),
+      );
+      return;
+    }
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Pilih Printer'),
+          content: SizedBox(
+            width: 320,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: devices.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final printer = devices[index];
+                return ListTile(
+                  leading: const Icon(Icons.print),
+                  title: Text(printer.name ?? 'Printer Bluetooth'),
+                  subtitle: Text(printer.address ?? '-'),
+                  onTap: () async {
+                    await PrinterService.instance.saveSelectedPrinter(printer);
+                    if (dialogContext.mounted) Navigator.pop(dialogContext);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Printer default: ${printer.name ?? 'Bluetooth Printer'}'),
+                          backgroundColor: AppColors.safetyOrange,
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _bayar(
     BuildContext context,
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
-    String paymentMethod,
-  ) async {
+    String paymentMethod, {
+    int? uangMasuk,
+    int? uangKembali,
+  }) async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
@@ -345,15 +489,16 @@ class KasirScreen extends ConsumerWidget {
     // Validasi lolos, lanjutkan simpan transaksi
     final uuid = const Uuid().v4();
     final total = ref.read(cartProvider.notifier).total(kategoris);
+    final now = DateTime.now();
 
     await db.into(db.transactions).insert(
       TransactionsCompanion.insert(
         id: uuid,
-        localNumber: 'A-${DateTime.now().millisecondsSinceEpoch}',
+        localNumber: 'A-${now.millisecondsSinceEpoch}',
         deviceId: 'device-dev-1',
         total: total,
         paymentMethod: paymentMethod,
-        createdAt: DateTime.now(),
+        createdAt: now,
       ),
     );
 
@@ -372,9 +517,37 @@ class KasirScreen extends ConsumerWidget {
 
     ref.read(cartProvider.notifier).clear();
 
+    final savedTransaction = Transaction(
+      id: uuid,
+      localNumber: 'A-${now.millisecondsSinceEpoch}',
+      deviceId: 'device-dev-1',
+      total: total,
+      paymentMethod: paymentMethod,
+      isSynced: false,
+      createdAt: now,
+      isVoided: false,
+      voidReason: null,
+      voidedAt: null,
+    );
+
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Transaksi tersimpan — Total ${_formatRupiah(total)}')),
+      final scaffold = ScaffoldMessenger.maybeOf(context);
+      if (scaffold != null) {
+        scaffold.showSnackBar(
+          SnackBar(content: Text('Transaksi tersimpan — Total ${_formatRupiah(total)}')),
+        );
+      }
+    }
+
+    if (context.mounted) {
+      await _attemptPrintAfterSave(
+        context: context,
+        ref: ref,
+        transaction: savedTransaction,
+        kategoris: kategoris,
+        paymentMethod: paymentMethod,
+        uangMasuk: uangMasuk,
+        uangKembali: uangKembali,
       );
     }
   }
@@ -670,6 +843,11 @@ class KasirScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KASIR — TIKET MOTOCROSS'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Pilih Printer',
+            onPressed: () => _showPrinterPickerDialog(context, ref),
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.of(context).push(

@@ -1,11 +1,14 @@
+import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
+import '../../data/models/ticket_category_model.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
+import '../../services/printer/printer_service.dart';
 import '../shift/rekonsiliasi_screen.dart';
 
 class RiwayatScreen extends ConsumerWidget {
@@ -33,6 +36,42 @@ class RiwayatScreen extends ConsumerWidget {
     if (selected != null && context.mounted) {
       ref.read(selectedRiwayatDateProvider.notifier).state = selected;
     }
+  }
+
+  Future<void> _reprintTransaction(BuildContext context, WidgetRef ref, Transaction transaction) async {
+    final db = ref.read(databaseProvider);
+    final items = await (db.select(db.transactionItems)
+          ..where((item) => item.transactionId.equals(transaction.id)))
+        .get();
+    final categories = await db.select(db.ticketCategories).get();
+    final categoryMap = {
+      for (final item in categories)
+        item.id: TicketCategoryModel(
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quota: item.quota,
+        ),
+    };
+
+    final result = await PrinterService.instance.reprintTransaction(
+      transaction: transaction,
+      items: items,
+      categories: categoryMap,
+    );
+
+    if (!context.mounted) return;
+
+    final message = result == PosPrintResult.success
+        ? 'Struk berhasil dicetak ulang.'
+        : 'Gagal mencetak ulang struk.';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: result == PosPrintResult.success ? AppColors.safetyOrange : Colors.red,
+      ),
+    );
   }
 
   void _showVoidDialog(BuildContext context, WidgetRef ref, Transaction transaction) {
@@ -355,9 +394,21 @@ class RiwayatScreen extends ConsumerWidget {
                                         onSelected: (value) {
                                           if (value == 'void') {
                                             _showVoidDialog(context, ref, t);
+                                          } else if (value == 'reprint') {
+                                            _reprintTransaction(context, ref, t);
                                           }
                                         },
                                         itemBuilder: (BuildContext context) => [
+                                          PopupMenuItem<String>(
+                                            value: 'reprint',
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.print, color: AppColors.safetyOrange),
+                                                const SizedBox(width: 8),
+                                                const Text('Reprint'),
+                                              ],
+                                            ),
+                                          ),
                                           PopupMenuItem<String>(
                                             value: 'void',
                                             child: Row(
