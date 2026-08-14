@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
@@ -215,7 +214,6 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
   ) {
     final total = ref.read(cartProvider.notifier).total(kategoris);
-    final qrData = 'motocross-pay-$total-${DateTime.now().millisecondsSinceEpoch}';
 
     showDialog(
       context: context,
@@ -246,19 +244,32 @@ class KasirScreen extends ConsumerWidget {
                 const SizedBox(height: 20),
                 Center(
                   child: Container(
-                    width: 240,
-                    height: 240,
+                    width: 250,
+                    height: 250,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppColors.asphalt.withValues(alpha: 0.08)),
                     ),
-                    child: QrImageView(
-                      data: qrData,
-                      version: QrVersions.auto,
-                      size: 200,
-                      backgroundColor: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.asset(
+                        'assets/images/qris.jpg',
+                        width: 220,
+                        height: 220,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 220,
+                            height: 220,
+                            color: AppColors.asphalt.withValues(alpha: 0.04),
+                            child: const Center(
+                              child: Icon(Icons.qr_code_2_outlined, size: 72),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
