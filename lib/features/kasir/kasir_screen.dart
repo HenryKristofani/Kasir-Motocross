@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
+import '../../core/widgets/sync_status_indicator.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
@@ -1175,6 +1176,7 @@ class KasirScreen extends ConsumerWidget {
                   tooltip: 'Pilih Printer',
                   onPressed: () => _showPrinterPickerDialog(context, ref),
                 ),
+                const SyncStatusIndicator(),
                 IconButton(
                   icon: const Icon(Icons.settings),
                   onPressed: () => Navigator.of(context).push(

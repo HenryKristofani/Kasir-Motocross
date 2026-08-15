@@ -36,6 +36,7 @@ class KategoriTiketNotifier extends StateNotifier<AsyncValue<List<TicketCategory
               name: name,
               price: price,
               quota: quota != null ? drift.Value(quota) : const drift.Value.absent(),
+              isSynced: const drift.Value(false),
             ),
           );
       await _loadCategories();
@@ -56,6 +57,7 @@ class KategoriTiketNotifier extends StateNotifier<AsyncValue<List<TicketCategory
               name: drift.Value(name),
               price: drift.Value(price),
               quota: quota != null ? drift.Value(quota) : const drift.Value.absent(),
+              isSynced: const drift.Value(false),
             ),
           );
       await _loadCategories();

@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/kasir/kasir_screen.dart';
 import 'features/riwayat/riwayat_screen.dart';
 import 'features/settings/kategori_tiket_screen.dart';
 import 'features/rekap/rekap_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/init_provider.dart';
+import 'providers/database_provider.dart';
+import 'services/sync/sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
+
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://qwgkqgniqmkbqoktkkwq.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2txZ25pcW1rYnFva3Rra3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjA4NzQsImV4cCI6MjEwMjMzNjg3NH0.E7sgh8Bi1OHJZWvRU6GetSAyHw9VJWEOKZrw20ojwcs',
+  );
+
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -47,10 +57,24 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize seed data saat app startup
+    // Initialize seed data dan sync service saat app startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(initKategoriTiketProvider);
+
+      // Initialize sync service
+      final db = ref.read(databaseProvider);
+      final supabase = Supabase.instance.client;
+      SyncService().init(db, supabase);
+
+      // Trigger initial sync attempt
+      SyncService().syncPending();
     });
+  }
+
+  @override
+  void dispose() {
+    SyncService().dispose();
+    super.dispose();
   }
 
   @override

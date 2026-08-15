@@ -45,8 +45,23 @@ class $TicketCategoriesTable extends TicketCategories
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, price, quota];
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, price, quota, isSynced];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -86,6 +101,12 @@ class $TicketCategoriesTable extends TicketCategories
         quota.isAcceptableOrUnknown(data['quota']!, _quotaMeta),
       );
     }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
     return context;
   }
 
@@ -111,6 +132,10 @@ class $TicketCategoriesTable extends TicketCategories
         DriftSqlType.int,
         data['${effectivePrefix}quota'],
       ),
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
     );
   }
 
@@ -125,11 +150,13 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
   final String name;
   final int price;
   final int? quota;
+  final bool isSynced;
   const TicketCategory({
     required this.id,
     required this.name,
     required this.price,
     this.quota,
+    required this.isSynced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -140,6 +167,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     if (!nullToAbsent || quota != null) {
       map['quota'] = Variable<int>(quota);
     }
+    map['is_synced'] = Variable<bool>(isSynced);
     return map;
   }
 
@@ -151,6 +179,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
       quota: quota == null && nullToAbsent
           ? const Value.absent()
           : Value(quota),
+      isSynced: Value(isSynced),
     );
   }
 
@@ -164,6 +193,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
       name: serializer.fromJson<String>(json['name']),
       price: serializer.fromJson<int>(json['price']),
       quota: serializer.fromJson<int?>(json['quota']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
   }
   @override
@@ -174,6 +204,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
       'name': serializer.toJson<String>(name),
       'price': serializer.toJson<int>(price),
       'quota': serializer.toJson<int?>(quota),
+      'isSynced': serializer.toJson<bool>(isSynced),
     };
   }
 
@@ -182,11 +213,13 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     String? name,
     int? price,
     Value<int?> quota = const Value.absent(),
+    bool? isSynced,
   }) => TicketCategory(
     id: id ?? this.id,
     name: name ?? this.name,
     price: price ?? this.price,
     quota: quota.present ? quota.value : this.quota,
+    isSynced: isSynced ?? this.isSynced,
   );
   TicketCategory copyWithCompanion(TicketCategoriesCompanion data) {
     return TicketCategory(
@@ -194,6 +227,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
       name: data.name.present ? data.name.value : this.name,
       price: data.price.present ? data.price.value : this.price,
       quota: data.quota.present ? data.quota.value : this.quota,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
   }
 
@@ -203,13 +237,14 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('price: $price, ')
-          ..write('quota: $quota')
+          ..write('quota: $quota, ')
+          ..write('isSynced: $isSynced')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, price, quota);
+  int get hashCode => Object.hash(id, name, price, quota, isSynced);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -217,7 +252,8 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
           other.id == this.id &&
           other.name == this.name &&
           other.price == this.price &&
-          other.quota == this.quota);
+          other.quota == this.quota &&
+          other.isSynced == this.isSynced);
 }
 
 class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
@@ -225,12 +261,14 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   final Value<String> name;
   final Value<int> price;
   final Value<int?> quota;
+  final Value<bool> isSynced;
   final Value<int> rowid;
   const TicketCategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.price = const Value.absent(),
     this.quota = const Value.absent(),
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TicketCategoriesCompanion.insert({
@@ -238,6 +276,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     required String name,
     required int price,
     this.quota = const Value.absent(),
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -247,6 +286,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     Expression<String>? name,
     Expression<int>? price,
     Expression<int>? quota,
+    Expression<bool>? isSynced,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -254,6 +294,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
       if (name != null) 'name': name,
       if (price != null) 'price': price,
       if (quota != null) 'quota': quota,
+      if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -263,6 +304,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     Value<String>? name,
     Value<int>? price,
     Value<int?>? quota,
+    Value<bool>? isSynced,
     Value<int>? rowid,
   }) {
     return TicketCategoriesCompanion(
@@ -270,6 +312,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
       name: name ?? this.name,
       price: price ?? this.price,
       quota: quota ?? this.quota,
+      isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -289,6 +332,9 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     if (quota.present) {
       map['quota'] = Variable<int>(quota.value);
     }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -302,6 +348,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
           ..write('name: $name, ')
           ..write('price: $price, ')
           ..write('quota: $quota, ')
+          ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -987,6 +1034,21 @@ class $TransactionItemsTable extends TransactionItems
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -994,6 +1056,7 @@ class $TransactionItemsTable extends TransactionItems
     categoryId,
     qty,
     subtotal,
+    isSynced,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1047,6 +1110,12 @@ class $TransactionItemsTable extends TransactionItems
     } else if (isInserting) {
       context.missing(_subtotalMeta);
     }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
     return context;
   }
 
@@ -1076,6 +1145,10 @@ class $TransactionItemsTable extends TransactionItems
         DriftSqlType.int,
         data['${effectivePrefix}subtotal'],
       )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
     );
   }
 
@@ -1091,12 +1164,14 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
   final String categoryId;
   final int qty;
   final int subtotal;
+  final bool isSynced;
   const TransactionItem({
     required this.id,
     required this.transactionId,
     required this.categoryId,
     required this.qty,
     required this.subtotal,
+    required this.isSynced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1106,6 +1181,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     map['category_id'] = Variable<String>(categoryId);
     map['qty'] = Variable<int>(qty);
     map['subtotal'] = Variable<int>(subtotal);
+    map['is_synced'] = Variable<bool>(isSynced);
     return map;
   }
 
@@ -1116,6 +1192,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       categoryId: Value(categoryId),
       qty: Value(qty),
       subtotal: Value(subtotal),
+      isSynced: Value(isSynced),
     );
   }
 
@@ -1130,6 +1207,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       categoryId: serializer.fromJson<String>(json['categoryId']),
       qty: serializer.fromJson<int>(json['qty']),
       subtotal: serializer.fromJson<int>(json['subtotal']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
   }
   @override
@@ -1141,6 +1219,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       'categoryId': serializer.toJson<String>(categoryId),
       'qty': serializer.toJson<int>(qty),
       'subtotal': serializer.toJson<int>(subtotal),
+      'isSynced': serializer.toJson<bool>(isSynced),
     };
   }
 
@@ -1150,12 +1229,14 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     String? categoryId,
     int? qty,
     int? subtotal,
+    bool? isSynced,
   }) => TransactionItem(
     id: id ?? this.id,
     transactionId: transactionId ?? this.transactionId,
     categoryId: categoryId ?? this.categoryId,
     qty: qty ?? this.qty,
     subtotal: subtotal ?? this.subtotal,
+    isSynced: isSynced ?? this.isSynced,
   );
   TransactionItem copyWithCompanion(TransactionItemsCompanion data) {
     return TransactionItem(
@@ -1168,6 +1249,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           : this.categoryId,
       qty: data.qty.present ? data.qty.value : this.qty,
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
   }
 
@@ -1178,13 +1260,15 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           ..write('transactionId: $transactionId, ')
           ..write('categoryId: $categoryId, ')
           ..write('qty: $qty, ')
-          ..write('subtotal: $subtotal')
+          ..write('subtotal: $subtotal, ')
+          ..write('isSynced: $isSynced')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, transactionId, categoryId, qty, subtotal);
+  int get hashCode =>
+      Object.hash(id, transactionId, categoryId, qty, subtotal, isSynced);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1193,7 +1277,8 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           other.transactionId == this.transactionId &&
           other.categoryId == this.categoryId &&
           other.qty == this.qty &&
-          other.subtotal == this.subtotal);
+          other.subtotal == this.subtotal &&
+          other.isSynced == this.isSynced);
 }
 
 class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
@@ -1202,6 +1287,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
   final Value<String> categoryId;
   final Value<int> qty;
   final Value<int> subtotal;
+  final Value<bool> isSynced;
   final Value<int> rowid;
   const TransactionItemsCompanion({
     this.id = const Value.absent(),
@@ -1209,6 +1295,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     this.categoryId = const Value.absent(),
     this.qty = const Value.absent(),
     this.subtotal = const Value.absent(),
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionItemsCompanion.insert({
@@ -1217,6 +1304,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     required String categoryId,
     required int qty,
     required int subtotal,
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        transactionId = Value(transactionId),
@@ -1229,6 +1317,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Expression<String>? categoryId,
     Expression<int>? qty,
     Expression<int>? subtotal,
+    Expression<bool>? isSynced,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1237,6 +1326,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
       if (categoryId != null) 'category_id': categoryId,
       if (qty != null) 'qty': qty,
       if (subtotal != null) 'subtotal': subtotal,
+      if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1247,6 +1337,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Value<String>? categoryId,
     Value<int>? qty,
     Value<int>? subtotal,
+    Value<bool>? isSynced,
     Value<int>? rowid,
   }) {
     return TransactionItemsCompanion(
@@ -1255,6 +1346,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
       categoryId: categoryId ?? this.categoryId,
       qty: qty ?? this.qty,
       subtotal: subtotal ?? this.subtotal,
+      isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1277,6 +1369,9 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     if (subtotal.present) {
       map['subtotal'] = Variable<int>(subtotal.value);
     }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1291,6 +1386,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
           ..write('categoryId: $categoryId, ')
           ..write('qty: $qty, ')
           ..write('subtotal: $subtotal, ')
+          ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1378,6 +1474,21 @@ class $ShiftReconciliationsTable extends ShiftReconciliations
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1387,6 +1498,7 @@ class $ShiftReconciliationsTable extends ShiftReconciliations
     selisih,
     catatan,
     createdAt,
+    isSynced,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1457,6 +1569,12 @@ class $ShiftReconciliationsTable extends ShiftReconciliations
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
     return context;
   }
 
@@ -1494,6 +1612,10 @@ class $ShiftReconciliationsTable extends ShiftReconciliations
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
     );
   }
 
@@ -1512,6 +1634,7 @@ class ShiftReconciliation extends DataClass
   final int selisih;
   final String? catatan;
   final DateTime createdAt;
+  final bool isSynced;
   const ShiftReconciliation({
     required this.id,
     required this.deviceId,
@@ -1520,6 +1643,7 @@ class ShiftReconciliation extends DataClass
     required this.selisih,
     this.catatan,
     required this.createdAt,
+    required this.isSynced,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1533,6 +1657,7 @@ class ShiftReconciliation extends DataClass
       map['catatan'] = Variable<String>(catatan);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_synced'] = Variable<bool>(isSynced);
     return map;
   }
 
@@ -1547,6 +1672,7 @@ class ShiftReconciliation extends DataClass
           ? const Value.absent()
           : Value(catatan),
       createdAt: Value(createdAt),
+      isSynced: Value(isSynced),
     );
   }
 
@@ -1563,6 +1689,7 @@ class ShiftReconciliation extends DataClass
       selisih: serializer.fromJson<int>(json['selisih']),
       catatan: serializer.fromJson<String?>(json['catatan']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
   }
   @override
@@ -1576,6 +1703,7 @@ class ShiftReconciliation extends DataClass
       'selisih': serializer.toJson<int>(selisih),
       'catatan': serializer.toJson<String?>(catatan),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
     };
   }
 
@@ -1587,6 +1715,7 @@ class ShiftReconciliation extends DataClass
     int? selisih,
     Value<String?> catatan = const Value.absent(),
     DateTime? createdAt,
+    bool? isSynced,
   }) => ShiftReconciliation(
     id: id ?? this.id,
     deviceId: deviceId ?? this.deviceId,
@@ -1595,6 +1724,7 @@ class ShiftReconciliation extends DataClass
     selisih: selisih ?? this.selisih,
     catatan: catatan.present ? catatan.value : this.catatan,
     createdAt: createdAt ?? this.createdAt,
+    isSynced: isSynced ?? this.isSynced,
   );
   ShiftReconciliation copyWithCompanion(ShiftReconciliationsCompanion data) {
     return ShiftReconciliation(
@@ -1609,6 +1739,7 @@ class ShiftReconciliation extends DataClass
       selisih: data.selisih.present ? data.selisih.value : this.selisih,
       catatan: data.catatan.present ? data.catatan.value : this.catatan,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
   }
 
@@ -1621,7 +1752,8 @@ class ShiftReconciliation extends DataClass
           ..write('totalFisikTunai: $totalFisikTunai, ')
           ..write('selisih: $selisih, ')
           ..write('catatan: $catatan, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
           ..write(')'))
         .toString();
   }
@@ -1635,6 +1767,7 @@ class ShiftReconciliation extends DataClass
     selisih,
     catatan,
     createdAt,
+    isSynced,
   );
   @override
   bool operator ==(Object other) =>
@@ -1646,7 +1779,8 @@ class ShiftReconciliation extends DataClass
           other.totalFisikTunai == this.totalFisikTunai &&
           other.selisih == this.selisih &&
           other.catatan == this.catatan &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.isSynced == this.isSynced);
 }
 
 class ShiftReconciliationsCompanion
@@ -1658,6 +1792,7 @@ class ShiftReconciliationsCompanion
   final Value<int> selisih;
   final Value<String?> catatan;
   final Value<DateTime> createdAt;
+  final Value<bool> isSynced;
   final Value<int> rowid;
   const ShiftReconciliationsCompanion({
     this.id = const Value.absent(),
@@ -1667,6 +1802,7 @@ class ShiftReconciliationsCompanion
     this.selisih = const Value.absent(),
     this.catatan = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ShiftReconciliationsCompanion.insert({
@@ -1677,6 +1813,7 @@ class ShiftReconciliationsCompanion
     required int selisih,
     this.catatan = const Value.absent(),
     required DateTime createdAt,
+    this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        deviceId = Value(deviceId),
@@ -1692,6 +1829,7 @@ class ShiftReconciliationsCompanion
     Expression<int>? selisih,
     Expression<String>? catatan,
     Expression<DateTime>? createdAt,
+    Expression<bool>? isSynced,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1702,6 +1840,7 @@ class ShiftReconciliationsCompanion
       if (selisih != null) 'selisih': selisih,
       if (catatan != null) 'catatan': catatan,
       if (createdAt != null) 'created_at': createdAt,
+      if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1714,6 +1853,7 @@ class ShiftReconciliationsCompanion
     Value<int>? selisih,
     Value<String?>? catatan,
     Value<DateTime>? createdAt,
+    Value<bool>? isSynced,
     Value<int>? rowid,
   }) {
     return ShiftReconciliationsCompanion(
@@ -1724,6 +1864,7 @@ class ShiftReconciliationsCompanion
       selisih: selisih ?? this.selisih,
       catatan: catatan ?? this.catatan,
       createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1752,6 +1893,9 @@ class ShiftReconciliationsCompanion
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1768,6 +1912,7 @@ class ShiftReconciliationsCompanion
           ..write('selisih: $selisih, ')
           ..write('catatan: $catatan, ')
           ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1804,6 +1949,7 @@ typedef $$TicketCategoriesTableCreateCompanionBuilder =
       required String name,
       required int price,
       Value<int?> quota,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 typedef $$TicketCategoriesTableUpdateCompanionBuilder =
@@ -1812,6 +1958,7 @@ typedef $$TicketCategoriesTableUpdateCompanionBuilder =
       Value<String> name,
       Value<int> price,
       Value<int?> quota,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 
@@ -1841,6 +1988,11 @@ class $$TicketCategoriesTableFilterComposer
 
   ColumnFilters<int> get quota => $composableBuilder(
     column: $table.quota,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1873,6 +2025,11 @@ class $$TicketCategoriesTableOrderingComposer
     column: $table.quota,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TicketCategoriesTableAnnotationComposer
@@ -1895,6 +2052,9 @@ class $$TicketCategoriesTableAnnotationComposer
 
   GeneratedColumn<int> get quota =>
       $composableBuilder(column: $table.quota, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
 }
 
 class $$TicketCategoriesTableTableManager
@@ -1938,12 +2098,14 @@ class $$TicketCategoriesTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<int> price = const Value.absent(),
                 Value<int?> quota = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TicketCategoriesCompanion(
                 id: id,
                 name: name,
                 price: price,
                 quota: quota,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1952,12 +2114,14 @@ class $$TicketCategoriesTableTableManager
                 required String name,
                 required int price,
                 Value<int?> quota = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TicketCategoriesCompanion.insert(
                 id: id,
                 name: name,
                 price: price,
                 quota: quota,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2293,6 +2457,7 @@ typedef $$TransactionItemsTableCreateCompanionBuilder =
       required String categoryId,
       required int qty,
       required int subtotal,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 typedef $$TransactionItemsTableUpdateCompanionBuilder =
@@ -2302,6 +2467,7 @@ typedef $$TransactionItemsTableUpdateCompanionBuilder =
       Value<String> categoryId,
       Value<int> qty,
       Value<int> subtotal,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 
@@ -2336,6 +2502,11 @@ class $$TransactionItemsTableFilterComposer
 
   ColumnFilters<int> get subtotal => $composableBuilder(
     column: $table.subtotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2373,6 +2544,11 @@ class $$TransactionItemsTableOrderingComposer
     column: $table.subtotal,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TransactionItemsTableAnnotationComposer
@@ -2402,6 +2578,9 @@ class $$TransactionItemsTableAnnotationComposer
 
   GeneratedColumn<int> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
 }
 
 class $$TransactionItemsTableTableManager
@@ -2446,6 +2625,7 @@ class $$TransactionItemsTableTableManager
                 Value<String> categoryId = const Value.absent(),
                 Value<int> qty = const Value.absent(),
                 Value<int> subtotal = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionItemsCompanion(
                 id: id,
@@ -2453,6 +2633,7 @@ class $$TransactionItemsTableTableManager
                 categoryId: categoryId,
                 qty: qty,
                 subtotal: subtotal,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2462,6 +2643,7 @@ class $$TransactionItemsTableTableManager
                 required String categoryId,
                 required int qty,
                 required int subtotal,
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionItemsCompanion.insert(
                 id: id,
@@ -2469,6 +2651,7 @@ class $$TransactionItemsTableTableManager
                 categoryId: categoryId,
                 qty: qty,
                 subtotal: subtotal,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -2505,6 +2688,7 @@ typedef $$ShiftReconciliationsTableCreateCompanionBuilder =
       required int selisih,
       Value<String?> catatan,
       required DateTime createdAt,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 typedef $$ShiftReconciliationsTableUpdateCompanionBuilder =
@@ -2516,6 +2700,7 @@ typedef $$ShiftReconciliationsTableUpdateCompanionBuilder =
       Value<int> selisih,
       Value<String?> catatan,
       Value<DateTime> createdAt,
+      Value<bool> isSynced,
       Value<int> rowid,
     });
 
@@ -2560,6 +2745,11 @@ class $$ShiftReconciliationsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2607,6 +2797,11 @@ class $$ShiftReconciliationsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ShiftReconciliationsTableAnnotationComposer
@@ -2642,6 +2837,9 @@ class $$ShiftReconciliationsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
 }
 
 class $$ShiftReconciliationsTableTableManager
@@ -2694,6 +2892,7 @@ class $$ShiftReconciliationsTableTableManager
                 Value<int> selisih = const Value.absent(),
                 Value<String?> catatan = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ShiftReconciliationsCompanion(
                 id: id,
@@ -2703,6 +2902,7 @@ class $$ShiftReconciliationsTableTableManager
                 selisih: selisih,
                 catatan: catatan,
                 createdAt: createdAt,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -2714,6 +2914,7 @@ class $$ShiftReconciliationsTableTableManager
                 required int selisih,
                 Value<String?> catatan = const Value.absent(),
                 required DateTime createdAt,
+                Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ShiftReconciliationsCompanion.insert(
                 id: id,
@@ -2723,6 +2924,7 @@ class $$ShiftReconciliationsTableTableManager
                 selisih: selisih,
                 catatan: catatan,
                 createdAt: createdAt,
+                isSynced: isSynced,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

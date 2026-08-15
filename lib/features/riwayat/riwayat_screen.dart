@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/pos_date_picker.dart';
+import '../../core/widgets/sync_status_indicator.dart';
 import '../../core/constants/payment_constants.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/database_provider.dart';
@@ -375,6 +376,7 @@ class RiwayatScreen extends ConsumerWidget {
                             isVoided: true,
                             voidReason: Value(reasonController.text.trim()),
                             voidedAt: Value(DateTime.now()),
+                            isSynced: false,
                           ),
                         );
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -446,6 +448,7 @@ class RiwayatScreen extends ConsumerWidget {
               onPressed: () => _pickDate(context, ref, selectedDate),
             ),
           ),
+          const SyncStatusIndicator(),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
