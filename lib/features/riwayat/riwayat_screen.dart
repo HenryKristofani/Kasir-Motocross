@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/pos_date_picker.dart';
 import '../../core/constants/payment_constants.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/database_provider.dart';
@@ -22,15 +23,10 @@ class RiwayatScreen extends ConsumerWidget {
   }
 
   Future<void> _pickDate(BuildContext context, WidgetRef ref, DateTime currentDate) async {
-    final selected = await showDatePicker(
+    final selected = await showPosDatePicker(
       context: context,
-      locale: const Locale('id', 'ID'),
       initialDate: currentDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100, 12, 31),
       helpText: 'Pilih tanggal riwayat',
-      cancelText: 'Batal',
-      confirmText: 'Pilih',
     );
 
     if (selected != null && context.mounted) {
