@@ -74,6 +74,263 @@ class RiwayatScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showTransactionDetailSheet(BuildContext context, WidgetRef ref, Transaction transaction) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final detailItems = ref.watch(transactionDetailItemsProvider(transaction.id)).valueOrNull ?? const <TransactionDetailItem>[];
+            final total = detailItems.fold<int>(0, (sum, item) => sum + item.subtotal);
+
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 6,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.asphalt.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, color: AppColors.safetyOrange),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Detail Transaksi',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const Spacer(),
+                          if (transaction.isVoided)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red[400],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'DIBATALKAN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (transaction.isVoided)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Pembatalan',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    if (transaction.voidReason != null && transaction.voidReason!.isNotEmpty)
+                                      Text('Alasan: ${transaction.voidReason}'),
+                                    if (transaction.voidedAt != null)
+                                      Text(
+                                        'Waktu: ${DateFormat('dd MMM yyyy, HH:mm:ss', 'id_ID').format(transaction.voidedAt!)}',
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                            _buildDetailRow('Nomor Nota', transaction.localNumber),
+                            _buildDetailRow(
+                              'Tanggal',
+                              DateFormat('dd MMM yyyy', 'id_ID').format(transaction.createdAt),
+                            ),
+                            _buildDetailRow(
+                              'Jam',
+                              DateFormat('HH:mm:ss', 'id_ID').format(transaction.createdAt),
+                            ),
+                            _buildDetailRow(
+                              'Metode Pembayaran',
+                              PaymentConstants.getDisplayName(transaction.paymentMethod),
+                            ),
+                            if (transaction.paymentMethod == PaymentConstants.tunai) ...[
+                              _buildDetailRow(
+                                'Uang Masuk',
+                                'Data tidak tersimpan pada transaksi',
+                              ),
+                              _buildDetailRow(
+                                'Kembalian',
+                                'Data tidak tersimpan pada transaksi',
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'Rincian Item',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (detailItems.isEmpty)
+                              const Text('Tidak ada item transaksi.')
+                            else
+                              ListView.separated(
+                                physics: const NeverScrollableScrollPhysics(),
+                                shrinkWrap: true,
+                                itemCount: detailItems.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final item = detailItems[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item.categoryName,
+                                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '${item.qty} x ${_formatRupiah(item.unitPrice)}',
+                                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                  color: AppColors.asphalt.withValues(alpha: 0.7),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatRupiah(item.subtotal),
+                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            color: AppColors.safetyOrange,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 16),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Total',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                Text(
+                                  _formatRupiah(total),
+                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    color: AppColors.safetyOrange,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.trackWhite,
+                        border: Border(top: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08))),
+                      ),
+                      child: !transaction.isVoided
+                          ? SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  Navigator.pop(sheetContext);
+                                  await _reprintTransaction(context, ref, transaction);
+                                },
+                                icon: const Icon(Icons.print),
+                                label: const Text('Reprint'),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: TextStyle(
+                color: AppColors.asphalt.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showVoidDialog(BuildContext context, WidgetRef ref, Transaction transaction) {
     final reasonController = TextEditingController();
     final db = ref.read(databaseProvider);
@@ -286,6 +543,7 @@ class RiwayatScreen extends ConsumerWidget {
                         child: Column(
                           children: [
                             ListTile(
+                              onTap: () => _showTransactionDetailSheet(context, ref, t),
                               leading: Icon(
                                 Icons.receipt_long,
                                 color: isVoided ? Colors.grey[400] : null,

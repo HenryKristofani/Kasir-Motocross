@@ -54,10 +54,53 @@ final kategoriTiketStreamProvider = StreamProvider<List<TicketCategoryModel>>((r
           )).toList());
 });
 
+class TransactionDetailItem {
+  const TransactionDetailItem({
+    required this.categoryId,
+    required this.categoryName,
+    required this.qty,
+    required this.unitPrice,
+    required this.subtotal,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  final int qty;
+  final int unitPrice;
+  final int subtotal;
+}
+
 // Stream semua transaction items (untuk menghitung sisa kuota)
 final transactionItemsStreamProvider = StreamProvider<List<TransactionItem>>((ref) {
   final db = ref.watch(databaseProvider);
   return db.select(db.transactionItems).watch();
+});
+
+// Query join transaction_items dengan ticket_categories per transaksi
+final transactionDetailItemsProvider = FutureProvider.family<List<TransactionDetailItem>, String>((ref, transactionId) async {
+  final db = ref.watch(databaseProvider);
+  ref.watch(transactionItemsStreamProvider);
+  ref.watch(kategoriTiketStreamProvider);
+
+  final items = await (db.select(db.transactionItems)
+        ..where((item) => item.transactionId.equals(transactionId)))
+      .get();
+
+  final categories = await db.select(db.ticketCategories).get();
+  final categoryMap = {for (final category in categories) category.id: category};
+
+  return items.map((item) {
+    final category = categoryMap[item.categoryId];
+    final unitPrice = category?.price ?? 0;
+
+    return TransactionDetailItem(
+      categoryId: item.categoryId,
+      categoryName: category?.name ?? 'Kategori tidak tersedia',
+      qty: item.qty,
+      unitPrice: unitPrice,
+      subtotal: item.subtotal,
+    );
+  }).toList();
 });
 
 // Computed provider untuk sisa kuota per kategori
