@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
 import '../../data/local/database.dart';
 import '../../providers/database_provider.dart';
+import '../../services/sync/sync_service.dart';
 import 'riwayat_rekonsiliasi_screen.dart';
 
 class RekonsiliasiScreen extends ConsumerStatefulWidget {
@@ -113,6 +114,8 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                   createdAt: Value(DateTime.now()),
                 ),
               );
+
+              Future.microtask(() => SyncService().triggerLocalMutationSync());
 
               if (context.mounted) {
                 Navigator.pop(dialogContext);

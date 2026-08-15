@@ -12,6 +12,7 @@ import '../../providers/kuota_helper.dart';
 import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
 import '../settings/kategori_tiket_screen.dart';
+import '../../services/sync/sync_service.dart';
 
 class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
@@ -518,6 +519,7 @@ class KasirScreen extends ConsumerWidget {
     }
 
     ref.read(cartProvider.notifier).clear();
+    Future.microtask(() => SyncService().triggerLocalMutationSync());
 
     final savedTransaction = Transaction(
       id: uuid,
@@ -803,6 +805,7 @@ class KasirScreen extends ConsumerWidget {
         final isHabis = cat.quota != null && sisaKuota == 0;
 
         return Card(
+          key: ValueKey(cat.id),
           margin: const EdgeInsets.only(bottom: 10),
           color: isHabis
               ? AppColors.asphalt.withValues(alpha: 0.05)

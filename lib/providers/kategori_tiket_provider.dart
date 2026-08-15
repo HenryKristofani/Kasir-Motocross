@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../data/local/database.dart';
 import '../data/models/ticket_category_model.dart';
+import '../services/sync/sync_service.dart';
 import 'database_provider.dart';
 
 // Notifier untuk operasi CRUD kategori tiket
@@ -39,6 +40,7 @@ class KategoriTiketNotifier extends StateNotifier<AsyncValue<List<TicketCategory
               isSynced: const drift.Value(false),
             ),
           );
+      Future.microtask(() => SyncService().triggerLocalMutationSync());
       await _loadCategories();
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -60,6 +62,7 @@ class KategoriTiketNotifier extends StateNotifier<AsyncValue<List<TicketCategory
               isSynced: const drift.Value(false),
             ),
           );
+      Future.microtask(() => SyncService().triggerLocalMutationSync());
       await _loadCategories();
     } catch (e, st) {
       state = AsyncValue.error(e, st);

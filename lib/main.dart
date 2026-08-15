@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'POS Motocross',
       theme: AppTheme.light,
+      scaffoldMessengerKey: SyncService.scaffoldMessengerKey,
       home: const RootScreen(),
     );
   }

@@ -192,6 +192,7 @@ class KategoriTiketScreen extends ConsumerWidget {
             final terjual = kategori.quota != null ? (kategori.quota! - sisaKuota) : 0;
 
             return Card(
+              key: ValueKey(kategori.id),
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
                 contentPadding: const EdgeInsets.all(16),

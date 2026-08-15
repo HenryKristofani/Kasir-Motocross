@@ -11,6 +11,7 @@ import '../../data/models/ticket_category_model.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
+import '../../services/sync/sync_service.dart';
 import '../shift/rekonsiliasi_screen.dart';
 
 class RiwayatScreen extends ConsumerWidget {
@@ -379,6 +380,7 @@ class RiwayatScreen extends ConsumerWidget {
                             isSynced: false,
                           ),
                         );
+                        Future.microtask(() => SyncService().triggerLocalMutationSync());
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -538,6 +540,7 @@ class RiwayatScreen extends ConsumerWidget {
                       final isVoided = t.isVoided;
 
                       return Container(
+                        key: ValueKey(t.id),
                         color: isVoided ? Colors.grey[100] : Colors.transparent,
                         child: Column(
                           children: [
