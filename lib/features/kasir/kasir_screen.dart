@@ -27,6 +27,7 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
   ) {
+    debugPrint('=== _showPaymentMethodDialog called with context valid: ${context.mounted}');
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -561,6 +562,12 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
   ) {
+    final pageContext = context;
+
+    void openPaymentDialog() {
+      _showPaymentMethodDialog(pageContext, ref, kategoris);
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -570,6 +577,23 @@ class KasirScreen extends ConsumerWidget {
           builder: (context, ref, _) {
             final cart = ref.watch(cartProvider);
             final total = ref.read(cartProvider.notifier).total(kategoris);
+
+            Future<void> continueToPayment() async {
+              debugPrint('=== Lanjut ke Pembayaran pressed in cart sheet');
+              if (Navigator.of(sheetContext).canPop()) {
+                debugPrint('=== Before Navigator.pop() on cart sheet');
+                Navigator.of(sheetContext).pop();
+                debugPrint('=== After Navigator.pop() on cart sheet');
+              }
+
+              await Future<void>.delayed(const Duration(milliseconds: 50));
+
+              debugPrint('=== Before openPaymentDialog call');
+              if (pageContext.mounted) {
+                openPaymentDialog();
+              }
+              debugPrint('=== After openPaymentDialog call');
+            }
 
             return SafeArea(
               child: Container(
@@ -742,12 +766,7 @@ class KasirScreen extends ConsumerWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: cart.isEmpty
-                                  ? null
-                                  : () {
-                                      Navigator.pop(sheetContext);
-                                      _showPaymentMethodDialog(context, ref, kategoris);
-                                    },
+                              onPressed: cart.isEmpty ? null : continueToPayment,
                               child: const Text('Lanjut ke Pembayaran'),
                             ),
                           ),
@@ -948,6 +967,8 @@ class KasirScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.max, // Gunakan ruang penuh untuk panel
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Keep the same callback object used by the main checkout buttons.
+            // This avoids a duplicate flow and makes the behavior identical.
             // Header
             Text('Ringkasan', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 16),
@@ -1100,7 +1121,7 @@ class KasirScreen extends ConsumerWidget {
             data: (sisaKuotaMap) {
               final total = ref.read(cartProvider.notifier).total(kategoris);
 
-              return Scaffold(
+          return Scaffold(
             appBar: AppBar(
               title: const Text('KASIR — TIKET MOTOCROSS'),
               actions: [
