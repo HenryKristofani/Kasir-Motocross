@@ -552,6 +552,218 @@ class KasirScreen extends ConsumerWidget {
     }
   }
 
+  int _cartItemCount(Map<String, int> cart) {
+    return cart.values.fold<int>(0, (sum, qty) => sum + qty);
+  }
+
+  void _showCartBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final cart = ref.watch(cartProvider);
+            final total = ref.read(cartProvider.notifier).total(kategoris);
+
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.82,
+                ),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 6,
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.asphalt.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.shopping_cart, color: AppColors.safetyOrange),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Keranjang',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${_cartItemCount(cart)} item',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.asphalt.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    if (cart.isEmpty)
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.remove_shopping_cart_outlined,
+                                size: 56,
+                                color: AppColors.asphalt.withValues(alpha: 0.4),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Keranjang masih kosong',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppColors.asphalt.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          itemCount: cart.length,
+                          separatorBuilder: (_, _) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final entry = cart.entries.toList()[index];
+                            final category = kategoris.firstWhere((item) => item.id == entry.key);
+                            final qty = entry.value;
+                            final subtotal = category.price * qty;
+
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          category.name,
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${_formatRupiah(category.price)} / pcs',
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            color: AppColors.asphalt.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatRupiah(subtotal),
+                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.safetyOrange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        tooltip: 'Kurangi qty',
+                                        onPressed: () => ref.read(cartProvider.notifier).decrement(category.id),
+                                        icon: const Icon(Icons.remove_circle_outline),
+                                        color: AppColors.asphalt,
+                                      ),
+                                      SizedBox(
+                                        width: 28,
+                                        child: Text(
+                                          '$qty',
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Tambah qty',
+                                        onPressed: () => ref.read(cartProvider.notifier).increment(category.id),
+                                        icon: const Icon(Icons.add_circle_outline),
+                                        color: AppColors.safetyOrange,
+                                      ),
+                                      IconButton(
+                                        tooltip: 'Hapus item',
+                                        onPressed: () => ref.read(cartProvider.notifier).remove(category.id),
+                                        icon: const Icon(Icons.delete_outline),
+                                        color: Colors.red,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.trackWhite,
+                        border: Border(top: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08))),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              Text(
+                                _formatRupiah(total),
+                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  color: AppColors.safetyOrange,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: cart.isEmpty
+                                  ? null
+                                  : () {
+                                      Navigator.pop(sheetContext);
+                                      _showPaymentMethodDialog(context, ref, kategoris);
+                                    },
+                              child: const Text('Lanjut ke Pembayaran'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // Daftar kategori tiket — dipakai di kedua layout (portrait & landscape)
   Widget _buildCategoryList(
     BuildContext context,
@@ -840,22 +1052,6 @@ class KasirScreen extends ConsumerWidget {
     final kategoriStream = ref.watch(kategoriTiketStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('KASIR — TIKET MOTOCROSS'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.print_outlined),
-            tooltip: 'Pilih Printer',
-            onPressed: () => _showPrinterPickerDialog(context, ref),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
-            ),
-          ),
-        ],
-      ),
       body: kategoriStream.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(
@@ -904,31 +1100,91 @@ class KasirScreen extends ConsumerWidget {
             data: (sisaKuotaMap) {
               final total = ref.read(cartProvider.notifier).total(kategoris);
 
-              return OrientationBuilder(
-                builder: (context, orientation) {
-                  if (orientation == Orientation.landscape) {
-                    // Landscape: split-view — list kiri, ringkasan panel tetap di kanan dengan scroll
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
-                        ),
-                        _buildCartSummaryPanel(context, ref, cart, total, kategoris, sisaKuotaMap),
-                      ],
-                    );
-                  }
+              return Scaffold(
+            appBar: AppBar(
+              title: const Text('KASIR — TIKET MOTOCROSS'),
+              actions: [
+                Builder(
+                  builder: (context) {
+                    final cartForBadge = ref.watch(cartProvider);
+                    final itemCount = _cartItemCount(cartForBadge);
 
-                  // Portrait: list penuh + bottom bar ringkasan minimal
-                  return Column(
+                    return itemCount > 0
+                        ? Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.shopping_cart),
+                                tooltip: 'Keranjang',
+                                onPressed: () => _showCartBottomSheet(context, ref, kategoris),
+                              ),
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.safetyOrange,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '$itemCount',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.shopping_cart),
+                            tooltip: 'Keranjang',
+                            onPressed: () => _showCartBottomSheet(context, ref, kategoris),
+                          );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.print_outlined),
+                  tooltip: 'Pilih Printer',
+                  onPressed: () => _showPrinterPickerDialog(context, ref),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
+                  ),
+                ),
+              ],
+            ),
+            body: OrientationBuilder(
+              builder: (context, orientation) {
+                if (orientation == Orientation.landscape) {
+                  return Row(
                     children: [
                       Expanded(
                         child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
                       ),
-                      _buildCartSummaryBottomBar(context, ref, cart, total, kategoris, sisaKuotaMap),
+                      _buildCartSummaryPanel(context, ref, cart, total, kategoris, sisaKuotaMap),
                     ],
                   );
-                },
-              );
+                }
+
+                return Column(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
+                    ),
+                    _buildCartSummaryBottomBar(context, ref, cart, total, kategoris, sisaKuotaMap),
+                  ],
+                );
+              },
+            ),
+          );
             },
           );
         },

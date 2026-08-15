@@ -19,6 +19,11 @@ class CartNotifier extends StateNotifier<Map<String, int>> {
     }
   }
 
+  void remove(String categoryId) {
+    final newState = {...state}..remove(categoryId);
+    state = newState;
+  }
+
   void clear() {
     state = {};
   }
