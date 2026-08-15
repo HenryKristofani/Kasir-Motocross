@@ -879,11 +879,13 @@ class KasirScreen extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Row(
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(_formatRupiah(cat.price), style: Theme.of(context).textTheme.bodyMedium),
-                            if (cat.quota != null && sisaKuota != null) ...[
-                              const SizedBox(width: 12),
+                            if (cat.quota != null && sisaKuota != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
@@ -902,7 +904,6 @@ class KasirScreen extends ConsumerWidget {
                                       ),
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ],
