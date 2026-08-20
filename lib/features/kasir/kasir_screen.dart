@@ -343,7 +343,7 @@ class KasirScreen extends ConsumerWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.asset(
-                        'assets/images/qris.jpg',
+                        'assets/images/qris.png',
                         width: 220,
                         height: 220,
                         fit: BoxFit.contain,
