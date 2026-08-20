@@ -6,6 +6,7 @@ import 'features/kasir/kasir_screen.dart';
 import 'features/riwayat/riwayat_screen.dart';
 import 'features/settings/kategori_tiket_screen.dart';
 import 'features/rekap/rekap_screen.dart';
+import 'features/dashboard/dashboard_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/database_provider.dart';
 
@@ -49,6 +50,7 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   final _pages = const [
     KasirScreen(),
     RiwayatScreen(),
+    DashboardScreen(),
     KategoriTiketScreen(),
     RekapScreen(),
   ];
@@ -79,6 +81,10 @@ class _RootScreenState extends ConsumerState<RootScreen> {
             label: 'Kasir',
           ),
           NavigationDestination(icon: Icon(Icons.history), label: 'Riwayat'),
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'Dashboard',
+          ),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Kategori'),
           NavigationDestination(icon: Icon(Icons.assessment), label: 'Rekap'),
         ],
