@@ -1,21 +1,31 @@
 class TicketCategoryModel {
   final String id;
   final String name;
+  final String dayType;
   final int price;
   final int? quota;
 
   const TicketCategoryModel({
     required this.id,
     required this.name,
+    this.dayType = 'day1',
     required this.price,
     this.quota,
   });
+
+  bool get isBundling => dayType == 'bundling';
+
+  String get displayName {
+    switch (dayType) {
+      case 'day2':
+        return '$name - Day 2';
+      case 'bundling':
+        return '$name - Bundling 2 Hari';
+      default:
+        return '$name - Day 1';
+    }
+  }
 }
 
 // Data dummy sementara, nanti bisa diganti input manual atau dari Supabase
-final dummyTicketCategories = [
-  const TicketCategoryModel(id: 'cat-1', name: 'MX1', price: 50000),
-  const TicketCategoryModel(id: 'cat-2', name: 'MX2', price: 50000),
-  const TicketCategoryModel(id: 'cat-3', name: 'Open Class', price: 35000),
-  const TicketCategoryModel(id: 'cat-4', name: 'Penonton', price: 20000),
-];
+final dummyTicketCategories = <TicketCategoryModel>[];

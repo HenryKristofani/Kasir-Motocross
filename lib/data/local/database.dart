@@ -9,6 +9,7 @@ part 'database.g.dart';
 class TicketCategories extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
+  TextColumn get dayType => text().withDefault(const Constant('day1'))();
   IntColumn get price => integer()();
   IntColumn get quota => integer().nullable()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
@@ -59,12 +60,19 @@ class ShiftReconciliations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [TicketCategories, Transactions, TransactionItems, ShiftReconciliations])
+@DriftDatabase(
+  tables: [
+    TicketCategories,
+    Transactions,
+    TransactionItems,
+    ShiftReconciliations,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -83,7 +91,13 @@ class AppDatabase extends _$AppDatabase {
         if (oldVersion < 4) {
           await m.addColumn(ticketCategories, ticketCategories.isSynced);
           await m.addColumn(transactionItems, transactionItems.isSynced);
-          await m.addColumn(shiftReconciliations, shiftReconciliations.isSynced);
+          await m.addColumn(
+            shiftReconciliations,
+            shiftReconciliations.isSynced,
+          );
+        }
+        if (oldVersion < 5) {
+          await m.addColumn(ticketCategories, ticketCategories.dayType);
         }
       },
     );

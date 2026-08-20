@@ -27,6 +27,18 @@ class $TicketCategoriesTable extends TicketCategories
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _dayTypeMeta = const VerificationMeta(
+    'dayType',
+  );
+  @override
+  late final GeneratedColumn<String> dayType = GeneratedColumn<String>(
+    'day_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('day1'),
+  );
   static const VerificationMeta _priceMeta = const VerificationMeta('price');
   @override
   late final GeneratedColumn<int> price = GeneratedColumn<int>(
@@ -61,7 +73,14 @@ class $TicketCategoriesTable extends TicketCategories
     defaultValue: const Constant(false),
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, price, quota, isSynced];
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    dayType,
+    price,
+    quota,
+    isSynced,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -86,6 +105,12 @@ class $TicketCategoriesTable extends TicketCategories
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('day_type')) {
+      context.handle(
+        _dayTypeMeta,
+        dayType.isAcceptableOrUnknown(data['day_type']!, _dayTypeMeta),
+      );
     }
     if (data.containsKey('price')) {
       context.handle(
@@ -124,6 +149,10 @@ class $TicketCategoriesTable extends TicketCategories
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      dayType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_type'],
+      )!,
       price: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}price'],
@@ -148,12 +177,14 @@ class $TicketCategoriesTable extends TicketCategories
 class TicketCategory extends DataClass implements Insertable<TicketCategory> {
   final String id;
   final String name;
+  final String dayType;
   final int price;
   final int? quota;
   final bool isSynced;
   const TicketCategory({
     required this.id,
     required this.name,
+    required this.dayType,
     required this.price,
     this.quota,
     required this.isSynced,
@@ -163,6 +194,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
+    map['day_type'] = Variable<String>(dayType);
     map['price'] = Variable<int>(price);
     if (!nullToAbsent || quota != null) {
       map['quota'] = Variable<int>(quota);
@@ -175,6 +207,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     return TicketCategoriesCompanion(
       id: Value(id),
       name: Value(name),
+      dayType: Value(dayType),
       price: Value(price),
       quota: quota == null && nullToAbsent
           ? const Value.absent()
@@ -191,6 +224,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     return TicketCategory(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      dayType: serializer.fromJson<String>(json['dayType']),
       price: serializer.fromJson<int>(json['price']),
       quota: serializer.fromJson<int?>(json['quota']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -202,6 +236,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
+      'dayType': serializer.toJson<String>(dayType),
       'price': serializer.toJson<int>(price),
       'quota': serializer.toJson<int?>(quota),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -211,12 +246,14 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
   TicketCategory copyWith({
     String? id,
     String? name,
+    String? dayType,
     int? price,
     Value<int?> quota = const Value.absent(),
     bool? isSynced,
   }) => TicketCategory(
     id: id ?? this.id,
     name: name ?? this.name,
+    dayType: dayType ?? this.dayType,
     price: price ?? this.price,
     quota: quota.present ? quota.value : this.quota,
     isSynced: isSynced ?? this.isSynced,
@@ -225,6 +262,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     return TicketCategory(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      dayType: data.dayType.present ? data.dayType.value : this.dayType,
       price: data.price.present ? data.price.value : this.price,
       quota: data.quota.present ? data.quota.value : this.quota,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
@@ -236,6 +274,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
     return (StringBuffer('TicketCategory(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('dayType: $dayType, ')
           ..write('price: $price, ')
           ..write('quota: $quota, ')
           ..write('isSynced: $isSynced')
@@ -244,13 +283,14 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, price, quota, isSynced);
+  int get hashCode => Object.hash(id, name, dayType, price, quota, isSynced);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is TicketCategory &&
           other.id == this.id &&
           other.name == this.name &&
+          other.dayType == this.dayType &&
           other.price == this.price &&
           other.quota == this.quota &&
           other.isSynced == this.isSynced);
@@ -259,6 +299,7 @@ class TicketCategory extends DataClass implements Insertable<TicketCategory> {
 class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   final Value<String> id;
   final Value<String> name;
+  final Value<String> dayType;
   final Value<int> price;
   final Value<int?> quota;
   final Value<bool> isSynced;
@@ -266,6 +307,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   const TicketCategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.dayType = const Value.absent(),
     this.price = const Value.absent(),
     this.quota = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -274,6 +316,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   TicketCategoriesCompanion.insert({
     required String id,
     required String name,
+    this.dayType = const Value.absent(),
     required int price,
     this.quota = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -284,6 +327,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   static Insertable<TicketCategory> custom({
     Expression<String>? id,
     Expression<String>? name,
+    Expression<String>? dayType,
     Expression<int>? price,
     Expression<int>? quota,
     Expression<bool>? isSynced,
@@ -292,6 +336,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (dayType != null) 'day_type': dayType,
       if (price != null) 'price': price,
       if (quota != null) 'quota': quota,
       if (isSynced != null) 'is_synced': isSynced,
@@ -302,6 +347,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
   TicketCategoriesCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
+    Value<String>? dayType,
     Value<int>? price,
     Value<int?>? quota,
     Value<bool>? isSynced,
@@ -310,6 +356,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     return TicketCategoriesCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      dayType: dayType ?? this.dayType,
       price: price ?? this.price,
       quota: quota ?? this.quota,
       isSynced: isSynced ?? this.isSynced,
@@ -325,6 +372,9 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (dayType.present) {
+      map['day_type'] = Variable<String>(dayType.value);
     }
     if (price.present) {
       map['price'] = Variable<int>(price.value);
@@ -346,6 +396,7 @@ class TicketCategoriesCompanion extends UpdateCompanion<TicketCategory> {
     return (StringBuffer('TicketCategoriesCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('dayType: $dayType, ')
           ..write('price: $price, ')
           ..write('quota: $quota, ')
           ..write('isSynced: $isSynced, ')
@@ -1947,6 +1998,7 @@ typedef $$TicketCategoriesTableCreateCompanionBuilder =
     TicketCategoriesCompanion Function({
       required String id,
       required String name,
+      Value<String> dayType,
       required int price,
       Value<int?> quota,
       Value<bool> isSynced,
@@ -1956,6 +2008,7 @@ typedef $$TicketCategoriesTableUpdateCompanionBuilder =
     TicketCategoriesCompanion Function({
       Value<String> id,
       Value<String> name,
+      Value<String> dayType,
       Value<int> price,
       Value<int?> quota,
       Value<bool> isSynced,
@@ -1978,6 +2031,11 @@ class $$TicketCategoriesTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayType => $composableBuilder(
+    column: $table.dayType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2016,6 +2074,11 @@ class $$TicketCategoriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get dayType => $composableBuilder(
+    column: $table.dayType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get price => $composableBuilder(
     column: $table.price,
     builder: (column) => ColumnOrderings(column),
@@ -2046,6 +2109,9 @@ class $$TicketCategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get dayType =>
+      $composableBuilder(column: $table.dayType, builder: (column) => column);
 
   GeneratedColumn<int> get price =>
       $composableBuilder(column: $table.price, builder: (column) => column);
@@ -2096,6 +2162,7 @@ class $$TicketCategoriesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String> dayType = const Value.absent(),
                 Value<int> price = const Value.absent(),
                 Value<int?> quota = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -2103,6 +2170,7 @@ class $$TicketCategoriesTableTableManager
               }) => TicketCategoriesCompanion(
                 id: id,
                 name: name,
+                dayType: dayType,
                 price: price,
                 quota: quota,
                 isSynced: isSynced,
@@ -2112,6 +2180,7 @@ class $$TicketCategoriesTableTableManager
               ({
                 required String id,
                 required String name,
+                Value<String> dayType = const Value.absent(),
                 required int price,
                 Value<int?> quota = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -2119,6 +2188,7 @@ class $$TicketCategoriesTableTableManager
               }) => TicketCategoriesCompanion.insert(
                 id: id,
                 name: name,
+                dayType: dayType,
                 price: price,
                 quota: quota,
                 isSynced: isSynced,

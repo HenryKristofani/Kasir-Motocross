@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS ticket_categories (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  day_type TEXT NOT NULL DEFAULT 'day1' CHECK (day_type IN ('day1', 'day2', 'bundling')),
   price DECIMAL(10, 2) NOT NULL,
   quota INTEGER,
   is_synced BOOLEAN DEFAULT false,
@@ -58,6 +59,20 @@ CREATE TABLE IF NOT EXISTS events (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Migration untuk database Supabase yang sudah memiliki ticket_categories.
+ALTER TABLE ticket_categories
+  ADD COLUMN IF NOT EXISTS day_type TEXT NOT NULL DEFAULT 'day1';
+
+ALTER TABLE ticket_categories
+  DROP CONSTRAINT IF EXISTS ticket_categories_day_type_check;
+
+ALTER TABLE ticket_categories
+  ADD CONSTRAINT ticket_categories_day_type_check
+  CHECK (day_type IN ('day1', 'day2', 'bundling'));
+
+ALTER TABLE ticket_categories
+  ALTER COLUMN quota DROP NOT NULL;
+
 -- Create indexes untuk performa query
 CREATE INDEX IF NOT EXISTS idx_transactions_device_id ON transactions(device_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
@@ -68,6 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_transaction_items_category_id ON transaction_item
 CREATE INDEX IF NOT EXISTS idx_transaction_items_is_synced ON transaction_items(is_synced);
 
 CREATE INDEX IF NOT EXISTS idx_ticket_categories_is_synced ON ticket_categories(is_synced);
+CREATE INDEX IF NOT EXISTS idx_ticket_categories_name_day_type ON ticket_categories(name, day_type);
 
 CREATE INDEX IF NOT EXISTS idx_shift_reconciliations_device_id ON shift_reconciliations(device_id);
 CREATE INDEX IF NOT EXISTS idx_shift_reconciliations_created_at ON shift_reconciliations(created_at);

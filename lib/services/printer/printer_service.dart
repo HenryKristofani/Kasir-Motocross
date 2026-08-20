@@ -14,8 +14,10 @@ class PrinterService {
 
   static final instance = PrinterService._();
 
-  static const String _selectedPrinterNameKey = 'selected_bluetooth_printer_name';
-  static const String _selectedPrinterAddressKey = 'selected_bluetooth_printer_address';
+  static const String _selectedPrinterNameKey =
+      'selected_bluetooth_printer_name';
+  static const String _selectedPrinterAddressKey =
+      'selected_bluetooth_printer_address';
 
   final PrinterBluetoothManager _manager = PrinterBluetoothManager();
 
@@ -29,7 +31,9 @@ class PrinterService {
     return '${isNegative ? '-' : ''}Rp$formatted';
   }
 
-  Future<List<PrinterBluetooth>> discoverPrinters({Duration timeout = const Duration(seconds: 5)}) async {
+  Future<List<PrinterBluetooth>> discoverPrinters({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     final List<PrinterBluetooth> foundDevices = [];
     final subscription = _manager.scanResults.listen((devices) {
       foundDevices
@@ -49,7 +53,10 @@ class PrinterService {
 
   Future<void> saveSelectedPrinter(PrinterBluetooth printer) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_selectedPrinterNameKey, printer.name ?? 'Printer Bluetooth');
+    await prefs.setString(
+      _selectedPrinterNameKey,
+      printer.name ?? 'Printer Bluetooth',
+    );
     await prefs.setString(_selectedPrinterAddressKey, printer.address ?? '');
   }
 
@@ -68,7 +75,9 @@ class PrinterService {
       return null;
     }
 
-    final printers = await discoverPrinters(timeout: const Duration(seconds: 4));
+    final printers = await discoverPrinters(
+      timeout: const Duration(seconds: 4),
+    );
     for (final printer in printers) {
       if ((printer.address ?? '').toLowerCase() == address.toLowerCase()) {
         return printer;
@@ -112,7 +121,11 @@ class PrinterService {
       return PosPrintResult.ticketEmpty;
     }
 
-    return _manager.printTicket(bytes, chunkSizeBytes: 20, queueSleepTimeMs: 20);
+    return _manager.printTicket(
+      bytes,
+      chunkSizeBytes: 20,
+      queueSleepTimeMs: 20,
+    );
   }
 
   Future<PosPrintResult> reprintTransaction({
@@ -178,18 +191,30 @@ class PrinterService {
     ]);
     buffer += generator.hr();
     buffer += generator.row([
-      PosColumn(text: 'Qty', width: 2, styles: PosStyles(align: PosAlign.center)),
+      PosColumn(
+        text: 'Qty',
+        width: 2,
+        styles: PosStyles(align: PosAlign.center),
+      ),
       PosColumn(text: 'Jenis', width: 5),
-      PosColumn(text: 'Nominal', width: 5, styles: PosStyles(align: PosAlign.right)),
+      PosColumn(
+        text: 'Nominal',
+        width: 5,
+        styles: PosStyles(align: PosAlign.right),
+      ),
     ]);
 
     for (final item in items) {
       final category = categories[item.categoryId];
-      final itemName = category?.name ?? 'Tiket';
+      final itemName = category?.displayName ?? 'Tiket';
       final itemSubtotal = item.subtotal;
 
       buffer += generator.row([
-        PosColumn(text: '${item.qty}', width: 2, styles: PosStyles(align: PosAlign.center)),
+        PosColumn(
+          text: '${item.qty}',
+          width: 2,
+          styles: PosStyles(align: PosAlign.center),
+        ),
         PosColumn(text: itemName, width: 5),
         PosColumn(
           text: _formatRupiah(itemSubtotal),

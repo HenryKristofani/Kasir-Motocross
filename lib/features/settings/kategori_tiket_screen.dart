@@ -9,10 +9,7 @@ class KategoriTiketScreen extends ConsumerWidget {
   const KategoriTiketScreen({super.key});
 
   String _formatRupiah(int amount) {
-    return 'Rp${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    )}';
+    return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
   void _showKategoriDialog(
@@ -20,46 +17,174 @@ class KategoriTiketScreen extends ConsumerWidget {
     WidgetRef ref, {
     TicketCategoryModel? kategori,
   }) {
+    const parentNames = ['VVIP', 'VIP', 'Paddock', 'Umum', 'Crosser'];
     final nameController = TextEditingController(text: kategori?.name ?? '');
-    final priceController = TextEditingController(text: kategori?.price.toString() ?? '');
-    final quotaController = TextEditingController(text: kategori?.quota?.toString() ?? '');
+    final priceController = TextEditingController(
+      text: kategori?.price.toString() ?? '',
+    );
+    final quotaController = TextEditingController(
+      text: kategori?.quota?.toString() ?? '',
+    );
+    var selectedName = parentNames.contains(kategori?.name)
+        ? kategori!.name
+        : parentNames.first;
+    var selectedDayType = kategori?.dayType ?? 'day1';
+    if (selectedName == 'Crosser' && selectedDayType == 'bundling')
+      selectedDayType = 'day1';
+    if (selectedName == 'Crosser') priceController.text = '0';
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(kategori == null ? 'Tambah Kategori' : 'Edit Kategori'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Kategori',
-                  hintText: 'Misal: MX1, Open Class',
-                ),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          final isCrosser = selectedName == 'Crosser';
+          final isBundling = selectedDayType == 'bundling';
+          return AlertDialog(
+            title: Text(
+              kategori == null ? 'Tambah Varian Tiket' : 'Edit Varian Tiket',
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedName,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori Induk',
+                    ),
+                    items: parentNames
+                        .map(
+                          (name) =>
+                              DropdownMenuItem(value: name, child: Text(name)),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        selectedName = value;
+                        nameController.text = value;
+                        if (value == 'Crosser') {
+                          selectedDayType = 'day1';
+                          priceController.text = '0';
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedDayType,
+                    decoration: const InputDecoration(labelText: 'Varian Hari'),
+                    items: [
+                      const DropdownMenuItem(
+                        value: 'day1',
+                        child: Text('Day 1'),
+                      ),
+                      const DropdownMenuItem(
+                        value: 'day2',
+                        child: Text('Day 2'),
+                      ),
+                      if (!isCrosser)
+                        const DropdownMenuItem(
+                          value: 'bundling',
+                          child: Text('Bundling 2 Hari'),
+                        ),
+                    ],
+                    onChanged: isCrosser
+                        ? null
+                        : (value) =>
+                              setState(() => selectedDayType = value ?? 'day1'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: priceController,
+                    enabled: !isCrosser,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Harga',
+                      prefixText: 'Rp ',
+                    ),
+                  ),
+                  if (!isBundling) ...[
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: quotaController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Kuota',
+                        hintText: 'Kosongkan jika tanpa batas',
+                      ),
+                    ),
+                  ] else
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Kuota bundling mengikuti minimum sisa Day 1 dan Day 2.',
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Harga',
-                  hintText: '50000',
-                  prefixText: 'Rp ',
-                ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Batal'),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: quotaController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Kuota (opsional)',
-                  hintText: 'Kosongkan jika tidak ada batasan',
-                ),
+              ElevatedButton(
+                onPressed: () {
+                  final price = isCrosser
+                      ? 0
+                      : (int.tryParse(priceController.text) ?? 0);
+                  final quota = isBundling
+                      ? null
+                      : int.tryParse(quotaController.text);
+                  if (!isCrosser && price < 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Harga tidak valid')),
+                    );
+                    return;
+                  }
+                  if (kategori == null) {
+                    ref
+                        .read(kategoriTiketNotifierProvider.notifier)
+                        .addKategori(
+                          name: selectedName,
+                          dayType: selectedDayType,
+                          price: price,
+                          quota: quota,
+                        );
+                  } else {
+                    ref
+                        .read(kategoriTiketNotifierProvider.notifier)
+                        .updateKategori(
+                          id: kategori.id,
+                          name: selectedName,
+                          dayType: selectedDayType,
+                          price: price,
+                          quota: quota,
+                        );
+                  }
+                  Navigator.pop(dialogContext);
+                },
+                child: Text(kategori == null ? 'Tambah' : 'Simpan'),
               ),
             ],
-          ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDeleteConfirmDialog(
+    BuildContext context,
+    WidgetRef ref,
+    TicketCategoryModel kategori,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Kategori'),
+        content: Text(
+          'Yakin hapus kategori "${kategori.name}"? Ini tidak bisa dibatalkan.',
         ),
         actions: [
           TextButton(
@@ -68,60 +193,12 @@ class KategoriTiketScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final name = nameController.text.trim();
-              final price = int.tryParse(priceController.text) ?? 0;
-              final quota = int.tryParse(quotaController.text);
-
-              if (name.isEmpty || price <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Nama dan Harga harus diisi dengan benar')),
-                );
-                return;
-              }
-
-              if (kategori == null) {
-                ref.read(kategoriTiketNotifierProvider.notifier).addKategori(
-                      name: name,
-                      price: price,
-                      quota: quota,
-                    );
-              } else {
-                ref.read(kategoriTiketNotifierProvider.notifier).updateKategori(
-                      id: kategori.id,
-                      name: name,
-                      price: price,
-                      quota: quota,
-                    );
-              }
-
+              ref
+                  .read(kategoriTiketNotifierProvider.notifier)
+                  .deleteKategori(kategori.id);
               Navigator.pop(context);
             },
-            child: Text(kategori == null ? 'Tambah' : 'Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirmDialog(BuildContext context, WidgetRef ref, TicketCategoryModel kategori) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Kategori'),
-        content: Text('Yakin hapus kategori "${kategori.name}"? Ini tidak bisa dibatalkan.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(kategoriTiketNotifierProvider.notifier).deleteKategori(kategori.id);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Hapus'),
           ),
         ],
@@ -134,9 +211,7 @@ class KategoriTiketScreen extends ConsumerWidget {
     final kategoriStream = ref.watch(kategoriTiketStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MANAJEMEN KATEGORI TIKET'),
-      ),
+      appBar: AppBar(title: const Text('MANAJEMEN KATEGORI TIKET')),
       body: kategoriStream.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(
@@ -157,7 +232,11 @@ class KategoriTiketScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.category_outlined, size: 64, color: AppColors.asphalt.withValues(alpha: 0.3)),
+                    Icon(
+                      Icons.category_outlined,
+                      size: 64,
+                      color: AppColors.asphalt.withValues(alpha: 0.3),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Belum ada kategori tiket',
@@ -176,7 +255,11 @@ class KategoriTiketScreen extends ConsumerWidget {
   }
 
   // Build list dengan sisa kuota yang di-watch real-time
-  Widget _buildKategoriList(BuildContext context, WidgetRef ref, List<TicketCategoryModel> kategoriList) {
+  Widget _buildKategoriList(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoriList,
+  ) {
     final sisaKuotaAsync = ref.watch(sisaKuotaPerKategoriProvider);
 
     return sisaKuotaAsync.when(
@@ -189,7 +272,10 @@ class KategoriTiketScreen extends ConsumerWidget {
           itemBuilder: (context, index) {
             final kategori = kategoriList[index];
             final sisaKuota = sisaKuotaMap[kategori.id] ?? kategori.quota ?? -1;
-            final terjual = kategori.quota != null ? (kategori.quota! - sisaKuota) : 0;
+            final hasQuota = sisaKuotaMap.containsKey(kategori.id);
+            final terjual = kategori.quota != null
+                ? (kategori.quota! - sisaKuota)
+                : null;
 
             return Card(
               key: ValueKey(kategori.id),
@@ -203,22 +289,21 @@ class KategoriTiketScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: AppColors.safetyOrange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.safetyOrange,
-                      width: 2,
-                    ),
+                    border: Border.all(color: AppColors.safetyOrange, width: 2),
                   ),
                   child: Text(
-                    kategori.name.substring(0, kategori.name.length >= 2 ? 2 : 1).toUpperCase(),
+                    kategori.name
+                        .substring(0, kategori.name.length >= 2 ? 2 : 1)
+                        .toUpperCase(),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.safetyOrange,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: AppColors.safetyOrange,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 title: Text(
-                  kategori.name,
+                  kategori.displayName,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 subtitle: Column(
@@ -229,15 +314,19 @@ class KategoriTiketScreen extends ConsumerWidget {
                       children: [
                         Text(
                           _formatRupiah(kategori.price),
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
                                 color: AppColors.safetyOrange,
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
-                        if (kategori.quota != null) ...[
+                        if (hasQuota) ...[
                           const SizedBox(width: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.dirtTan.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -247,8 +336,11 @@ class KategoriTiketScreen extends ConsumerWidget {
                               ),
                             ),
                             child: Text(
-                              'Terjual: $terjual / Kuota: ${kategori.quota}',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              kategori.isBundling
+                                  ? 'Sisa efektif: $sisaKuota'
+                                  : 'Terjual: $terjual / Kuota: ${kategori.quota}',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
                                     color: AppColors.dirtTan,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -265,11 +357,18 @@ class KategoriTiketScreen extends ConsumerWidget {
                       child: const Text('Edit'),
                       onTap: () => Future.microtask(
                         // ignore: use_build_context_synchronously
-                        () => _showKategoriDialog(context, ref, kategori: kategori),
+                        () => _showKategoriDialog(
+                          context,
+                          ref,
+                          kategori: kategori,
+                        ),
                       ),
                     ),
                     PopupMenuItem(
-                      child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+                      child: const Text(
+                        'Hapus',
+                        style: TextStyle(color: Colors.red),
+                      ),
                       onTap: () => Future.microtask(
                         // ignore: use_build_context_synchronously
                         () => _showDeleteConfirmDialog(context, ref, kategori),

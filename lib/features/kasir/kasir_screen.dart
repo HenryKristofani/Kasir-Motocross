@@ -18,10 +18,7 @@ class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
 
   String _formatRupiah(int amount) {
-    return 'Rp${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    )}';
+    return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
   void _showPaymentMethodDialog(
@@ -29,7 +26,9 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
   ) {
-    debugPrint('=== _showPaymentMethodDialog called with context valid: ${context.mounted}');
+    debugPrint(
+      '=== _showPaymentMethodDialog called with context valid: ${context.mounted}',
+    );
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -119,7 +118,9 @@ class KasirScreen extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: AppColors.asphalt.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.asphalt.withValues(alpha: 0.1)),
+                        border: Border.all(
+                          color: AppColors.asphalt.withValues(alpha: 0.1),
+                        ),
                       ),
                       child: Text(
                         _formatRupiah(total),
@@ -140,7 +141,9 @@ class KasirScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         prefixText: 'Rp ',
-                        prefixStyle: const TextStyle(fontWeight: FontWeight.w600),
+                        prefixStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       onChanged: (_) => setState(() {}),
                     ),
@@ -168,10 +171,13 @@ class KasirScreen extends ConsumerWidget {
                       ),
                       child: Text(
                         _formatRupiah(kembalian),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: kembalian >= 0 ? AppColors.safetyOrange : Colors.red,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: kembalian >= 0
+                                  ? AppColors.safetyOrange
+                                  : Colors.red,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ),
                     if (!isValid) ...[
@@ -262,7 +268,9 @@ class KasirScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.asphalt.withValues(alpha: 0.08)),
+                      border: Border.all(
+                        color: AppColors.asphalt.withValues(alpha: 0.08),
+                      ),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -328,15 +336,16 @@ class KasirScreen extends ConsumerWidget {
     int? uangKembali,
   }) async {
     final db = ref.read(databaseProvider);
-    final items = await (db.select(db.transactionItems)
-          ..where((item) => item.transactionId.equals(transaction.id)))
-        .get();
+    final items = await (db.select(
+      db.transactionItems,
+    )..where((item) => item.transactionId.equals(transaction.id))).get();
     final categoryRows = await db.select(db.ticketCategories).get();
     final categoryMap = {
       for (final category in categoryRows)
         category.id: TicketCategoryModel(
           id: category.id,
           name: category.name,
+          dayType: category.dayType,
           price: category.price,
           quota: category.quota,
         ),
@@ -364,10 +373,13 @@ class KasirScreen extends ConsumerWidget {
     }
 
     final message = switch (result) {
-      PosPrintResult.printerNotSelected => 'Printer belum dipilih. Silakan pilih printer dulu.',
-      PosPrintResult.timeout => 'Waktu cetak habis. Printer mungkin tidak responsif.',
+      PosPrintResult.printerNotSelected =>
+        'Printer belum dipilih. Silakan pilih printer dulu.',
+      PosPrintResult.timeout =>
+        'Waktu cetak habis. Printer mungkin tidak responsif.',
       PosPrintResult.ticketEmpty => 'Data struk kosong.',
-      PosPrintResult.printInProgress => 'Printer sedang dipakai, coba sebentar lagi.',
+      PosPrintResult.printInProgress =>
+        'Printer sedang dipakai, coba sebentar lagi.',
       PosPrintResult.scanInProgress => 'Pemindaian printer sedang berlangsung.',
       _ => 'Gagal mencetak struk. Transaksi tetap tersimpan.',
     };
@@ -395,14 +407,23 @@ class KasirScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showPrinterPickerDialog(BuildContext context, WidgetRef ref) async {
-    final devices = await PrinterService.instance.discoverPrinters(timeout: const Duration(seconds: 6));
+  Future<void> _showPrinterPickerDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final devices = await PrinterService.instance.discoverPrinters(
+      timeout: const Duration(seconds: 6),
+    );
 
     if (!context.mounted) return;
 
     if (devices.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tidak ada printer Bluetooth yang terdeteksi. Pastikan printer telah dipasangkan.')),
+        const SnackBar(
+          content: Text(
+            'Tidak ada printer Bluetooth yang terdeteksi. Pastikan printer telah dipasangkan.',
+          ),
+        ),
       );
       return;
     }
@@ -430,7 +451,9 @@ class KasirScreen extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Printer default: ${printer.name ?? 'Bluetooth Printer'}'),
+                          content: Text(
+                            'Printer default: ${printer.name ?? 'Bluetooth Printer'}',
+                          ),
                           backgroundColor: AppColors.safetyOrange,
                         ),
                       );
@@ -466,19 +489,31 @@ class KasirScreen extends ConsumerWidget {
 
     // Validasi kuota real-time sebelum transaksi
     final sisaKuotaMap = await calculateSisaKuotaPerKategori(db, kategoris);
-    
+
     for (final entry in cart.entries) {
       final cat = kategoris.firstWhere((c) => c.id == entry.key);
-      
-      // Jika kategori punya quota, validasi qty tidak melebihi sisa
-      if (cat.quota != null) {
+
+      // Bundling memakai sisa efektif minimum Day 1 dan Day 2.
+      if (cat.isBundling && !sisaKuotaMap.containsKey(cat.id)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Varian ${cat.displayName} membutuhkan pasangan Day 1 dan Day 2.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      if (sisaKuotaMap.containsKey(cat.id)) {
         final sisaKuota = sisaKuotaMap[cat.id] ?? 0;
         if (entry.value > sisaKuota) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  'Kuota ${cat.name} tidak mencukupi! Sisa: $sisaKuota, diminta: ${entry.value}',
+                  'Kuota ${cat.displayName} tidak mencukupi! Sisa: $sisaKuota, diminta: ${entry.value}',
                 ),
                 backgroundColor: Colors.red,
               ),
@@ -494,28 +529,32 @@ class KasirScreen extends ConsumerWidget {
     final total = ref.read(cartProvider.notifier).total(kategoris);
     final now = DateTime.now();
 
-    await db.into(db.transactions).insert(
-      TransactionsCompanion.insert(
-        id: uuid,
-        localNumber: 'A-${now.millisecondsSinceEpoch}',
-        deviceId: 'device-dev-1',
-        total: total,
-        paymentMethod: paymentMethod,
-        createdAt: now,
-      ),
-    );
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            id: uuid,
+            localNumber: 'A-${now.millisecondsSinceEpoch}',
+            deviceId: 'device-dev-1',
+            total: total,
+            paymentMethod: paymentMethod,
+            createdAt: now,
+          ),
+        );
 
     for (final entry in cart.entries) {
       final cat = kategoris.firstWhere((c) => c.id == entry.key);
-      await db.into(db.transactionItems).insert(
-        TransactionItemsCompanion.insert(
-          id: const Uuid().v4(),
-          transactionId: uuid,
-          categoryId: entry.key,
-          qty: entry.value,
-          subtotal: (cat.price * entry.value).toInt(),
-        ),
-      );
+      await db
+          .into(db.transactionItems)
+          .insert(
+            TransactionItemsCompanion.insert(
+              id: const Uuid().v4(),
+              transactionId: uuid,
+              categoryId: entry.key,
+              qty: entry.value,
+              subtotal: (cat.price * entry.value).toInt(),
+            ),
+          );
     }
 
     ref.read(cartProvider.notifier).clear();
@@ -538,7 +577,11 @@ class KasirScreen extends ConsumerWidget {
       final scaffold = ScaffoldMessenger.maybeOf(context);
       if (scaffold != null) {
         scaffold.showSnackBar(
-          SnackBar(content: Text('Transaksi tersimpan — Total ${_formatRupiah(total)}')),
+          SnackBar(
+            content: Text(
+              'Transaksi tersimpan — Total ${_formatRupiah(total)}',
+            ),
+          ),
         );
       }
     }
@@ -620,10 +663,16 @@ class KasirScreen extends ConsumerWidget {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
-                          const Icon(Icons.shopping_cart, color: AppColors.safetyOrange),
+                          const Icon(
+                            Icons.shopping_cart,
+                            color: AppColors.safetyOrange,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Keranjang',
@@ -632,9 +681,12 @@ class KasirScreen extends ConsumerWidget {
                           const Spacer(),
                           Text(
                             '${_cartItemCount(cart)} item',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.asphalt.withValues(alpha: 0.7),
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: AppColors.asphalt.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
                           ),
                         ],
                       ),
@@ -654,9 +706,12 @@ class KasirScreen extends ConsumerWidget {
                               const SizedBox(height: 12),
                               Text(
                                 'Keranjang masih kosong',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: AppColors.asphalt.withValues(alpha: 0.7),
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: AppColors.asphalt.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
                               ),
                             ],
                           ),
@@ -665,12 +720,17 @@ class KasirScreen extends ConsumerWidget {
                     else
                       Expanded(
                         child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           itemCount: cart.length,
                           separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final entry = cart.entries.toList()[index];
-                            final category = kategoris.firstWhere((item) => item.id == entry.key);
+                            final category = kategoris.firstWhere(
+                              (item) => item.id == entry.key,
+                            );
                             final qty = entry.value;
                             final subtotal = category.price * qty;
 
@@ -681,26 +741,36 @@ class KasirScreen extends ConsumerWidget {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           category.name,
-                                          style: Theme.of(context).textTheme.titleMedium,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           '${_formatRupiah(category.price)} / pcs',
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            color: AppColors.asphalt.withValues(alpha: 0.7),
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: AppColors.asphalt
+                                                    .withValues(alpha: 0.7),
+                                              ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           _formatRupiah(subtotal),
-                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.safetyOrange,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.safetyOrange,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -709,8 +779,12 @@ class KasirScreen extends ConsumerWidget {
                                     children: [
                                       IconButton(
                                         tooltip: 'Kurangi qty',
-                                        onPressed: () => ref.read(cartProvider.notifier).decrement(category.id),
-                                        icon: const Icon(Icons.remove_circle_outline),
+                                        onPressed: () => ref
+                                            .read(cartProvider.notifier)
+                                            .decrement(category.id),
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                        ),
                                         color: AppColors.asphalt,
                                       ),
                                       SizedBox(
@@ -718,18 +792,26 @@ class KasirScreen extends ConsumerWidget {
                                         child: Text(
                                           '$qty',
                                           textAlign: TextAlign.center,
-                                          style: Theme.of(context).textTheme.titleMedium,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
                                         ),
                                       ),
                                       IconButton(
                                         tooltip: 'Tambah qty',
-                                        onPressed: () => ref.read(cartProvider.notifier).increment(category.id),
-                                        icon: const Icon(Icons.add_circle_outline),
+                                        onPressed: () => ref
+                                            .read(cartProvider.notifier)
+                                            .increment(category.id),
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                        ),
                                         color: AppColors.safetyOrange,
                                       ),
                                       IconButton(
                                         tooltip: 'Hapus item',
-                                        onPressed: () => ref.read(cartProvider.notifier).remove(category.id),
+                                        onPressed: () => ref
+                                            .read(cartProvider.notifier)
+                                            .remove(category.id),
                                         icon: const Icon(Icons.delete_outline),
                                         color: Colors.red,
                                       ),
@@ -745,7 +827,11 @@ class KasirScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                       decoration: BoxDecoration(
                         color: AppColors.trackWhite,
-                        border: Border(top: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08))),
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.asphalt.withValues(alpha: 0.08),
+                          ),
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -758,10 +844,13 @@ class KasirScreen extends ConsumerWidget {
                               ),
                               Text(
                                 _formatRupiah(total),
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  color: AppColors.safetyOrange,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      color: AppColors.safetyOrange,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
                             ],
                           ),
@@ -769,7 +858,9 @@ class KasirScreen extends ConsumerWidget {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: cart.isEmpty ? null : continueToPayment,
+                              onPressed: cart.isEmpty
+                                  ? null
+                                  : continueToPayment,
                               child: const Text('Lanjut ke Pembayaran'),
                             ),
                           ),
@@ -794,15 +885,39 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,
   ) {
+    final grouped = <String, List<TicketCategoryModel>>{};
+    for (final category in kategoris) {
+      grouped.putIfAbsent(category.name, () => []).add(category);
+    }
+    final rows = <Object>[];
+    for (final entry in grouped.entries) {
+      rows.add(entry.key);
+      rows.addAll(entry.value);
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(12),
-      itemCount: kategoris.length,
+      itemCount: rows.length,
       itemBuilder: (context, index) {
-        final cat = kategoris[index];
+        final row = rows[index];
+        if (row is String) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Text(
+              row,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          );
+        }
+
+        final cat = row as TicketCategoryModel;
         final qty = cart[cat.id] ?? 0;
         final selected = qty > 0;
         final sisaKuota = sisaKuotaMap[cat.id];
-        final isHabis = cat.quota != null && sisaKuota == 0;
+        final hasQuota = sisaKuotaMap.containsKey(cat.id);
+        final isHabis = hasQuota && sisaKuota == 0;
 
         return Card(
           key: ValueKey(cat.id),
@@ -810,16 +925,16 @@ class KasirScreen extends ConsumerWidget {
           color: isHabis
               ? AppColors.asphalt.withValues(alpha: 0.05)
               : selected
-                  ? AppColors.safetyOrange.withValues(alpha: 0.06)
-                  : Colors.white,
+              ? AppColors.safetyOrange.withValues(alpha: 0.06)
+              : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color: isHabis
                   ? Colors.grey.withValues(alpha: 0.3)
                   : selected
-                      ? AppColors.safetyOrange
-                      : AppColors.asphalt.withValues(alpha: 0.08),
+                  ? AppColors.safetyOrange
+                  : AppColors.asphalt.withValues(alpha: 0.08),
               width: selected ? 1.5 : 1,
             ),
           ),
@@ -848,8 +963,11 @@ class KasirScreen extends ConsumerWidget {
                             ),
                           )
                         : Text(
-                            cat.name.substring(0, cat.name.length >= 2 ? 2 : 1).toUpperCase(),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            cat.name
+                                .substring(0, cat.name.length >= 2 ? 2 : 1)
+                                .toUpperCase(),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
                                   color: AppColors.trackWhite,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -862,19 +980,29 @@ class KasirScreen extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Text(cat.name, style: Theme.of(context).textTheme.titleMedium),
+                            Text(
+                              cat.displayName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                             const SizedBox(width: 8),
                             if (isHabis)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.red.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.red, width: 1),
+                                  border: Border.all(
+                                    color: Colors.red,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Text(
                                   'HABIS',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: Colors.red,
                                         fontWeight: FontWeight.w700,
                                       ),
@@ -888,12 +1016,20 @@ class KasirScreen extends ConsumerWidget {
                           runSpacing: 6,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Text(_formatRupiah(cat.price), style: Theme.of(context).textTheme.bodyMedium),
-                            if (cat.quota != null && sisaKuota != null)
+                            Text(
+                              _formatRupiah(cat.price),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            if (hasQuota && sisaKuota != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.safetyOrange.withValues(alpha: 0.1),
+                                  color: AppColors.safetyOrange.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
                                     color: AppColors.safetyOrange,
@@ -902,7 +1038,8 @@ class KasirScreen extends ConsumerWidget {
                                 ),
                                 child: Text(
                                   'Sisa: $sisaKuota',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
                                         color: AppColors.safetyOrange,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -918,7 +1055,11 @@ class KasirScreen extends ConsumerWidget {
                     children: [
                       IconButton.filledTonal(
                         icon: const Icon(Icons.remove),
-                        onPressed: qty > 0 ? () => ref.read(cartProvider.notifier).decrement(cat.id) : null,
+                        onPressed: qty > 0
+                            ? () => ref
+                                  .read(cartProvider.notifier)
+                                  .decrement(cat.id)
+                            : null,
                       ),
                       SizedBox(
                         width: 32,
@@ -931,11 +1072,15 @@ class KasirScreen extends ConsumerWidget {
                       IconButton.filled(
                         icon: const Icon(Icons.add),
                         // Disable tombol + jika kuota habis atau qty sudah mencapai sisa kuota
-                        onPressed: isHabis || (cat.quota != null && qty >= (sisaKuota ?? 0))
+                        onPressed:
+                            isHabis || (hasQuota && qty >= (sisaKuota ?? 0))
                             ? null
-                            : () => ref.read(cartProvider.notifier).increment(cat.id),
+                            : () => ref
+                                  .read(cartProvider.notifier)
+                                  .increment(cat.id),
                         style: IconButton.styleFrom(
-                          backgroundColor: isHabis || (cat.quota != null && qty >= (sisaKuota ?? 0))
+                          backgroundColor:
+                              isHabis || (hasQuota && qty >= (sisaKuota ?? 0))
                               ? Colors.grey
                               : AppColors.safetyOrange,
                         ),
@@ -965,7 +1110,9 @@ class KasirScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(left: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08))),
+        border: Border(
+          left: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08)),
+        ),
       ),
       child: SafeArea(
         child: Column(
@@ -975,7 +1122,10 @@ class KasirScreen extends ConsumerWidget {
             // Keep the same callback object used by the main checkout buttons.
             // This avoids a duplicate flow and makes the behavior identical.
             // Header
-            Text('Ringkasan', style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              'Ringkasan',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             const SizedBox(height: 16),
             const Divider(height: 0, thickness: 1),
             const SizedBox(height: 12),
@@ -996,8 +1146,16 @@ class KasirScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Row(
                             children: [
-                              Expanded(child: Text('${cat.name} x${e.value}', style: Theme.of(context).textTheme.bodyLarge)),
-                              Text(_formatRupiah(cat.price * e.value), style: Theme.of(context).textTheme.bodyLarge),
+                              Expanded(
+                                child: Text(
+                                  '${cat.displayName} x${e.value}',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                              Text(
+                                _formatRupiah(cat.price * e.value),
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
                             ],
                           ),
                         );
@@ -1013,14 +1171,21 @@ class KasirScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Total', style: Theme.of(context).textTheme.bodyLarge),
-                Text(_formatRupiah(total), style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: AppColors.safetyOrange)),
+                Text(
+                  _formatRupiah(total),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: AppColors.safetyOrange,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _showPaymentMethodDialog(context, ref, kategoris),
+                onPressed: cart.isEmpty
+                    ? null
+                    : () => _showPaymentMethodDialog(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -1043,7 +1208,13 @@ class KasirScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8, offset: const Offset(0, -2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: SafeArea(
         child: Column(
@@ -1055,14 +1226,21 @@ class KasirScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Total', style: Theme.of(context).textTheme.bodyLarge),
-                Text(_formatRupiah(total), style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: AppColors.safetyOrange)),
+                Text(
+                  _formatRupiah(total),
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: AppColors.safetyOrange,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: cart.isEmpty ? null : () => _showPaymentMethodDialog(context, ref, kategoris),
+                onPressed: cart.isEmpty
+                    ? null
+                    : () => _showPaymentMethodDialog(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -1099,7 +1277,11 @@ class KasirScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.category_outlined, size: 64, color: AppColors.asphalt.withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.category_outlined,
+                    size: 64,
+                    color: AppColors.asphalt.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Belum ada kategori tiket',
@@ -1108,7 +1290,9 @@ class KasirScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const KategoriTiketScreen(),
+                      ),
                     ),
                     child: const Text('Tambah Kategori'),
                   ),
@@ -1126,92 +1310,133 @@ class KasirScreen extends ConsumerWidget {
             data: (sisaKuotaMap) {
               final total = ref.read(cartProvider.notifier).total(kategoris);
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('KASIR — TIKET MOTOCROSS'),
-              actions: [
-                Builder(
-                  builder: (context) {
-                    final cartForBadge = ref.watch(cartProvider);
-                    final itemCount = _cartItemCount(cartForBadge);
+              return Scaffold(
+                appBar: AppBar(
+                  title: const Text('KASIR — TIKET MOTOCROSS'),
+                  actions: [
+                    Builder(
+                      builder: (context) {
+                        final cartForBadge = ref.watch(cartProvider);
+                        final itemCount = _cartItemCount(cartForBadge);
 
-                    return itemCount > 0
-                        ? Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.shopping_cart),
-                                tooltip: 'Keranjang',
-                                onPressed: () => _showCartBottomSheet(context, ref, kategoris),
-                              ),
-                              Positioned(
-                                right: 8,
-                                top: 8,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.safetyOrange,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    '$itemCount',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
+                        return itemCount > 0
+                            ? Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.shopping_cart),
+                                    tooltip: 'Keranjang',
+                                    onPressed: () => _showCartBottomSheet(
+                                      context,
+                                      ref,
+                                      kategoris,
                                     ),
                                   ),
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 18,
+                                        minHeight: 18,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.safetyOrange,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '$itemCount',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.shopping_cart),
+                                tooltip: 'Keranjang',
+                                onPressed: () => _showCartBottomSheet(
+                                  context,
+                                  ref,
+                                  kategoris,
                                 ),
-                              ),
-                            ],
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.shopping_cart),
-                            tooltip: 'Keranjang',
-                            onPressed: () => _showCartBottomSheet(context, ref, kategoris),
-                          );
+                              );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.print_outlined),
+                      tooltip: 'Pilih Printer',
+                      onPressed: () => _showPrinterPickerDialog(context, ref),
+                    ),
+                    const SyncStatusIndicator(),
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const KategoriTiketScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                body: OrientationBuilder(
+                  builder: (context, orientation) {
+                    if (orientation == Orientation.landscape) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _buildCategoryList(
+                              context,
+                              ref,
+                              cart,
+                              kategoris,
+                              sisaKuotaMap,
+                            ),
+                          ),
+                          _buildCartSummaryPanel(
+                            context,
+                            ref,
+                            cart,
+                            total,
+                            kategoris,
+                            sisaKuotaMap,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: _buildCategoryList(
+                            context,
+                            ref,
+                            cart,
+                            kategoris,
+                            sisaKuotaMap,
+                          ),
+                        ),
+                        _buildCartSummaryBottomBar(
+                          context,
+                          ref,
+                          cart,
+                          total,
+                          kategoris,
+                          sisaKuotaMap,
+                        ),
+                      ],
+                    );
                   },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.print_outlined),
-                  tooltip: 'Pilih Printer',
-                  onPressed: () => _showPrinterPickerDialog(context, ref),
-                ),
-                const SyncStatusIndicator(),
-                IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const KategoriTiketScreen()),
-                  ),
-                ),
-              ],
-            ),
-            body: OrientationBuilder(
-              builder: (context, orientation) {
-                if (orientation == Orientation.landscape) {
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
-                      ),
-                      _buildCartSummaryPanel(context, ref, cart, total, kategoris, sisaKuotaMap),
-                    ],
-                  );
-                }
-
-                return Column(
-                  children: [
-                    Expanded(
-                      child: _buildCategoryList(context, ref, cart, kategoris, sisaKuotaMap),
-                    ),
-                    _buildCartSummaryBottomBar(context, ref, cart, total, kategoris, sisaKuotaMap),
-                  ],
-                );
-              },
-            ),
-          );
+              );
             },
           );
         },

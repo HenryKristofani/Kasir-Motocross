@@ -18,13 +18,14 @@ class RiwayatScreen extends ConsumerWidget {
   const RiwayatScreen({super.key});
 
   String _formatRupiah(int amount) {
-    return 'Rp${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    )}';
+    return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
-  Future<void> _pickDate(BuildContext context, WidgetRef ref, DateTime currentDate) async {
+  Future<void> _pickDate(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime currentDate,
+  ) async {
     final selected = await showPosDatePicker(
       context: context,
       initialDate: currentDate,
@@ -36,17 +37,22 @@ class RiwayatScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _reprintTransaction(BuildContext context, WidgetRef ref, Transaction transaction) async {
+  Future<void> _reprintTransaction(
+    BuildContext context,
+    WidgetRef ref,
+    Transaction transaction,
+  ) async {
     final db = ref.read(databaseProvider);
-    final items = await (db.select(db.transactionItems)
-          ..where((item) => item.transactionId.equals(transaction.id)))
-        .get();
+    final items = await (db.select(
+      db.transactionItems,
+    )..where((item) => item.transactionId.equals(transaction.id))).get();
     final categories = await db.select(db.ticketCategories).get();
     final categoryMap = {
       for (final item in categories)
         item.id: TicketCategoryModel(
           id: item.id,
           name: item.name,
+          dayType: item.dayType,
           price: item.price,
           quota: item.quota,
         ),
@@ -67,12 +73,18 @@ class RiwayatScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: result == PosPrintResult.success ? AppColors.safetyOrange : Colors.red,
+        backgroundColor: result == PosPrintResult.success
+            ? AppColors.safetyOrange
+            : Colors.red,
       ),
     );
   }
 
-  Future<void> _showTransactionDetailSheet(BuildContext context, WidgetRef ref, Transaction transaction) async {
+  Future<void> _showTransactionDetailSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Transaction transaction,
+  ) async {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -80,8 +92,15 @@ class RiwayatScreen extends ConsumerWidget {
       builder: (sheetContext) {
         return Consumer(
           builder: (context, ref, _) {
-            final detailItems = ref.watch(transactionDetailItemsProvider(transaction.id)).valueOrNull ?? const <TransactionDetailItem>[];
-            final total = detailItems.fold<int>(0, (sum, item) => sum + item.subtotal);
+            final detailItems =
+                ref
+                    .watch(transactionDetailItemsProvider(transaction.id))
+                    .valueOrNull ??
+                const <TransactionDetailItem>[];
+            final total = detailItems.fold<int>(
+              0,
+              (sum, item) => sum + item.subtotal,
+            );
 
             return SafeArea(
               child: Container(
@@ -104,10 +123,16 @@ class RiwayatScreen extends ConsumerWidget {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       child: Row(
                         children: [
-                          const Icon(Icons.receipt_long, color: AppColors.safetyOrange),
+                          const Icon(
+                            Icons.receipt_long,
+                            color: AppColors.safetyOrange,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Detail Transaksi',
@@ -116,7 +141,10 @@ class RiwayatScreen extends ConsumerWidget {
                           const Spacer(),
                           if (transaction.isVoided)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red[400],
                                 borderRadius: BorderRadius.circular(4),
@@ -147,7 +175,9 @@ class RiwayatScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.red.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                                  border: Border.all(
+                                    color: Colors.red.withValues(alpha: 0.2),
+                                  ),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,7 +190,8 @@ class RiwayatScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    if (transaction.voidReason != null && transaction.voidReason!.isNotEmpty)
+                                    if (transaction.voidReason != null &&
+                                        transaction.voidReason!.isNotEmpty)
                                       Text('Alasan: ${transaction.voidReason}'),
                                     if (transaction.voidedAt != null)
                                       Text(
@@ -170,20 +201,32 @@ class RiwayatScreen extends ConsumerWidget {
                                 ),
                               ),
                             const SizedBox(height: 16),
-                            _buildDetailRow('Nomor Nota', transaction.localNumber),
+                            _buildDetailRow(
+                              'Nomor Nota',
+                              transaction.localNumber,
+                            ),
                             _buildDetailRow(
                               'Tanggal',
-                              DateFormat('dd MMM yyyy', 'id_ID').format(transaction.createdAt),
+                              DateFormat(
+                                'dd MMM yyyy',
+                                'id_ID',
+                              ).format(transaction.createdAt),
                             ),
                             _buildDetailRow(
                               'Jam',
-                              DateFormat('HH:mm:ss', 'id_ID').format(transaction.createdAt),
+                              DateFormat(
+                                'HH:mm:ss',
+                                'id_ID',
+                              ).format(transaction.createdAt),
                             ),
                             _buildDetailRow(
                               'Metode Pembayaran',
-                              PaymentConstants.getDisplayName(transaction.paymentMethod),
+                              PaymentConstants.getDisplayName(
+                                transaction.paymentMethod,
+                              ),
                             ),
-                            if (transaction.paymentMethod == PaymentConstants.tunai) ...[
+                            if (transaction.paymentMethod ==
+                                PaymentConstants.tunai) ...[
                               _buildDetailRow(
                                 'Uang Masuk',
                                 'Data tidak tersimpan pada transaksi',
@@ -196,9 +239,8 @@ class RiwayatScreen extends ConsumerWidget {
                             const SizedBox(height: 16),
                             Text(
                               'Rincian Item',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 8),
                             if (detailItems.isEmpty)
@@ -208,40 +250,58 @@ class RiwayatScreen extends ConsumerWidget {
                                 physics: const NeverScrollableScrollPhysics(),
                                 shrinkWrap: true,
                                 itemCount: detailItems.length,
-                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                separatorBuilder: (_, _) =>
+                                    const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final item = detailItems[index];
                                   return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 10,
+                                    ),
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 item.categoryName,
-                                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
                                                 '${item.qty} x ${_formatRupiah(item.unitPrice)}',
-                                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                                  color: AppColors.asphalt.withValues(alpha: 0.7),
-                                                ),
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      color: AppColors.asphalt
+                                                          .withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                    ),
                                               ),
                                             ],
                                           ),
                                         ),
                                         Text(
                                           _formatRupiah(item.subtotal),
-                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                            color: AppColors.safetyOrange,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: AppColors.safetyOrange,
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -256,14 +316,19 @@ class RiwayatScreen extends ConsumerWidget {
                               children: [
                                 Text(
                                   'Total',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                                 Text(
                                   _formatRupiah(total),
-                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                    color: AppColors.safetyOrange,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        color: AppColors.safetyOrange,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                 ),
                               ],
                             ),
@@ -276,7 +341,11 @@ class RiwayatScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                       decoration: BoxDecoration(
                         color: AppColors.trackWhite,
-                        border: Border(top: BorderSide(color: AppColors.asphalt.withValues(alpha: 0.08))),
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.asphalt.withValues(alpha: 0.08),
+                          ),
+                        ),
                       ),
                       child: !transaction.isVoided
                           ? SizedBox(
@@ -284,7 +353,11 @@ class RiwayatScreen extends ConsumerWidget {
                               child: ElevatedButton.icon(
                                 onPressed: () async {
                                   Navigator.pop(sheetContext);
-                                  await _reprintTransaction(context, ref, transaction);
+                                  await _reprintTransaction(
+                                    context,
+                                    ref,
+                                    transaction,
+                                  );
                                 },
                                 icon: const Icon(Icons.print),
                                 label: const Text('Reprint'),
@@ -312,9 +385,7 @@ class RiwayatScreen extends ConsumerWidget {
             width: 130,
             child: Text(
               label,
-              style: TextStyle(
-                color: AppColors.asphalt.withValues(alpha: 0.7),
-              ),
+              style: TextStyle(color: AppColors.asphalt.withValues(alpha: 0.7)),
             ),
           ),
           Expanded(
@@ -329,7 +400,11 @@ class RiwayatScreen extends ConsumerWidget {
     );
   }
 
-  void _showVoidDialog(BuildContext context, WidgetRef ref, Transaction transaction) {
+  void _showVoidDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Transaction transaction,
+  ) {
     final reasonController = TextEditingController();
     final db = ref.read(databaseProvider);
 
@@ -372,19 +447,25 @@ class RiwayatScreen extends ConsumerWidget {
                 onPressed: canSubmit
                     ? () async {
                         // Update transaksi dengan void status
-                        await db.update(db.transactions).replace(
-                          transaction.copyWith(
-                            isVoided: true,
-                            voidReason: Value(reasonController.text.trim()),
-                            voidedAt: Value(DateTime.now()),
-                            isSynced: false,
-                          ),
+                        await db
+                            .update(db.transactions)
+                            .replace(
+                              transaction.copyWith(
+                                isVoided: true,
+                                voidReason: Value(reasonController.text.trim()),
+                                voidedAt: Value(DateTime.now()),
+                                isSynced: false,
+                              ),
+                            );
+                        Future.microtask(
+                          () => SyncService().triggerLocalMutationSync(),
                         );
-                        Future.microtask(() => SyncService().triggerLocalMutationSync());
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Transaksi berhasil dibatalkan')),
+                            const SnackBar(
+                              content: Text('Transaksi berhasil dibatalkan'),
+                            ),
                           );
                         }
                       }
@@ -405,10 +486,17 @@ class RiwayatScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(selectedRiwayatDateProvider);
-    final filteredTransactions = ref.watch(filteredTransactionsByDateProvider(selectedDate));
+    final filteredTransactions = ref.watch(
+      filteredTransactionsByDateProvider(selectedDate),
+    );
 
-    final activeTransactions = filteredTransactions.where((t) => !t.isVoided).toList();
-    final totalTanggal = activeTransactions.fold<int>(0, (sum, t) => sum + t.total);
+    final activeTransactions = filteredTransactions
+        .where((t) => !t.isVoided)
+        .toList();
+    final totalTanggal = activeTransactions.fold<int>(
+      0,
+      (sum, t) => sum + t.total,
+    );
     final voidedCount = filteredTransactions.length - activeTransactions.length;
 
     return Scaffold(
@@ -545,7 +633,8 @@ class RiwayatScreen extends ConsumerWidget {
                         child: Column(
                           children: [
                             ListTile(
-                              onTap: () => _showTransactionDetailSheet(context, ref, t),
+                              onTap: () =>
+                                  _showTransactionDetailSheet(context, ref, t),
                               leading: Icon(
                                 Icons.receipt_long,
                                 color: isVoided ? Colors.grey[400] : null,
@@ -553,7 +642,9 @@ class RiwayatScreen extends ConsumerWidget {
                               title: Text(
                                 t.localNumber,
                                 style: TextStyle(
-                                  decoration: isVoided ? TextDecoration.lineThrough : null,
+                                  decoration: isVoided
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                   color: isVoided ? Colors.grey[600] : null,
                                 ),
                               ),
@@ -563,9 +654,14 @@ class RiwayatScreen extends ConsumerWidget {
                                   Row(
                                     children: [
                                       Text(
-                                        DateFormat('HH:mm:ss', 'id_ID').format(t.createdAt),
+                                        DateFormat(
+                                          'HH:mm:ss',
+                                          'id_ID',
+                                        ).format(t.createdAt),
                                         style: TextStyle(
-                                          color: isVoided ? Colors.grey[500] : null,
+                                          color: isVoided
+                                              ? Colors.grey[500]
+                                              : null,
                                         ),
                                       ),
                                       const SizedBox(width: 8),
@@ -575,11 +671,17 @@ class RiwayatScreen extends ConsumerWidget {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: AppColors.dirtTan.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: AppColors.dirtTan.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: Text(
-                                          PaymentConstants.getDisplayName(t.paymentMethod),
+                                          PaymentConstants.getDisplayName(
+                                            t.paymentMethod,
+                                          ),
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -600,7 +702,8 @@ class RiwayatScreen extends ConsumerWidget {
                                         ),
                                       ),
                                     ),
-                                  if (isVoided && (t.voidReason?.isNotEmpty ?? false))
+                                  if (isVoided &&
+                                      (t.voidReason?.isNotEmpty ?? false))
                                     Padding(
                                       padding: const EdgeInsets.only(top: 4),
                                       child: Text(
@@ -630,7 +733,9 @@ class RiwayatScreen extends ConsumerWidget {
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.red[400],
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                         child: const Text(
                                           'DIBATALKAN',
@@ -645,8 +750,12 @@ class RiwayatScreen extends ConsumerWidget {
                                       _formatRupiah(t.total),
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        decoration: isVoided ? TextDecoration.lineThrough : null,
-                                        color: isVoided ? Colors.grey[500] : null,
+                                        decoration: isVoided
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        color: isVoided
+                                            ? Colors.grey[500]
+                                            : null,
                                       ),
                                     ),
                                     if (!isVoided)
@@ -655,7 +764,11 @@ class RiwayatScreen extends ConsumerWidget {
                                           if (value == 'void') {
                                             _showVoidDialog(context, ref, t);
                                           } else if (value == 'reprint') {
-                                            _reprintTransaction(context, ref, t);
+                                            _reprintTransaction(
+                                              context,
+                                              ref,
+                                              t,
+                                            );
                                           }
                                         },
                                         itemBuilder: (BuildContext context) => [
@@ -663,7 +776,10 @@ class RiwayatScreen extends ConsumerWidget {
                                             value: 'reprint',
                                             child: Row(
                                               children: [
-                                                const Icon(Icons.print, color: AppColors.safetyOrange),
+                                                const Icon(
+                                                  Icons.print,
+                                                  color: AppColors.safetyOrange,
+                                                ),
                                                 const SizedBox(width: 8),
                                                 const Text('Reprint'),
                                               ],
@@ -673,7 +789,10 @@ class RiwayatScreen extends ConsumerWidget {
                                             value: 'void',
                                             child: Row(
                                               children: [
-                                                const Icon(Icons.cancel, color: Colors.red),
+                                                const Icon(
+                                                  Icons.cancel,
+                                                  color: Colors.red,
+                                                ),
                                                 const SizedBox(width: 8),
                                                 const Text('Batalkan'),
                                               ],
@@ -687,7 +806,9 @@ class RiwayatScreen extends ConsumerWidget {
                             ),
                             Divider(
                               height: 1,
-                              color: isVoided ? Colors.grey[300] : Colors.grey[200],
+                              color: isVoided
+                                  ? Colors.grey[300]
+                                  : Colors.grey[200],
                             ),
                           ],
                         ),

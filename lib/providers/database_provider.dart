@@ -54,41 +54,61 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 // Stream semua transaksi, urut dari terbaru
 final transactionsStreamProvider = StreamProvider<List<Transaction>>((ref) {
   final db = ref.watch(databaseProvider);
-  return (db.select(db.transactions)
-        ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-      .watch();
+  return (db.select(
+    db.transactions,
+  )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
 });
 
 // Tanggal aktif yang sedang dipilih di halaman Riwayat
-final selectedRiwayatDateProvider = StateProvider<DateTime>((ref) => DateTime.now());
+final selectedRiwayatDateProvider = StateProvider<DateTime>(
+  (ref) => DateTime.now(),
+);
 
 // Transaksi yang difilter per hari untuk halaman Riwayat
-final filteredTransactionsByDateProvider = Provider.family<List<Transaction>, DateTime>((ref, selectedDate) {
-  final allTransactions = ref.watch(transactionsStreamProvider).valueOrNull ?? const <Transaction>[];
-  final startOfDay = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-  final endOfDay = startOfDay.add(const Duration(days: 1));
+final filteredTransactionsByDateProvider =
+    Provider.family<List<Transaction>, DateTime>((ref, selectedDate) {
+      final allTransactions =
+          ref.watch(transactionsStreamProvider).valueOrNull ??
+          const <Transaction>[];
+      final startOfDay = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+      );
+      final endOfDay = startOfDay.add(const Duration(days: 1));
 
-  final filtered = allTransactions.where((transaction) {
-    final createdAt = transaction.createdAt;
-    return createdAt.isAfter(startOfDay.subtract(const Duration(microseconds: 1))) &&
-        createdAt.isBefore(endOfDay);
-  }).toList();
+      final filtered = allTransactions.where((transaction) {
+        final createdAt = transaction.createdAt;
+        return createdAt.isAfter(
+              startOfDay.subtract(const Duration(microseconds: 1)),
+            ) &&
+            createdAt.isBefore(endOfDay);
+      }).toList();
 
-  filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-  return filtered;
-});
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return filtered;
+    });
 
 // Stream semua kategori tiket dari database lokal, urut berdasarkan nama
-final kategoriTiketStreamProvider = StreamProvider<List<TicketCategoryModel>>((ref) {
+final kategoriTiketStreamProvider = StreamProvider<List<TicketCategoryModel>>((
+  ref,
+) {
   final db = ref.watch(databaseProvider);
-  return (db.select(db.ticketCategories)..orderBy([(c) => OrderingTerm.asc(c.name)]))
-      .watch()
-      .map((rows) => rows.map((row) => TicketCategoryModel(
+  return (db.select(
+    db.ticketCategories,
+  )..orderBy([(c) => OrderingTerm.asc(c.name)])).watch().map(
+    (rows) => rows
+        .map(
+          (row) => TicketCategoryModel(
             id: row.id,
             name: row.name,
+            dayType: row.dayType,
             price: row.price,
             quota: row.quota,
-          )).toList());
+          ),
+        )
+        .toList(),
+  );
 });
 
 class TransactionDetailItem {
@@ -108,75 +128,115 @@ class TransactionDetailItem {
 }
 
 // Stream semua transaction items (untuk menghitung sisa kuota)
-final transactionItemsStreamProvider = StreamProvider<List<TransactionItem>>((ref) {
+final transactionItemsStreamProvider = StreamProvider<List<TransactionItem>>((
+  ref,
+) {
   final db = ref.watch(databaseProvider);
   return db.select(db.transactionItems).watch();
 });
 
 // Query join transaction_items dengan ticket_categories per transaksi
-final transactionDetailItemsProvider = FutureProvider.family<List<TransactionDetailItem>, String>((ref, transactionId) async {
-  final db = ref.watch(databaseProvider);
-  ref.watch(transactionItemsStreamProvider);
-  ref.watch(kategoriTiketStreamProvider);
+final transactionDetailItemsProvider =
+    FutureProvider.family<List<TransactionDetailItem>, String>((
+      ref,
+      transactionId,
+    ) async {
+      final db = ref.watch(databaseProvider);
+      ref.watch(transactionItemsStreamProvider);
+      ref.watch(kategoriTiketStreamProvider);
 
-  final items = await (db.select(db.transactionItems)
-        ..where((item) => item.transactionId.equals(transactionId)))
-      .get();
+      final items = await (db.select(
+        db.transactionItems,
+      )..where((item) => item.transactionId.equals(transactionId))).get();
 
-  final categories = await db.select(db.ticketCategories).get();
-  final categoryMap = {for (final category in categories) category.id: category};
+      final categories = await db.select(db.ticketCategories).get();
+      final categoryMap = {
+        for (final category in categories) category.id: category,
+      };
 
-  return items.map((item) {
-    final category = categoryMap[item.categoryId];
-    final unitPrice = category?.price ?? 0;
+      return items.map((item) {
+        final category = categoryMap[item.categoryId];
+        final unitPrice = category?.price ?? 0;
 
-    return TransactionDetailItem(
-      categoryId: item.categoryId,
-      categoryName: category?.name ?? 'Kategori tidak tersedia',
-      qty: item.qty,
-      unitPrice: unitPrice,
-      subtotal: item.subtotal,
-    );
-  }).toList();
-});
+        return TransactionDetailItem(
+          categoryId: item.categoryId,
+          categoryName: category == null
+              ? 'Kategori tidak tersedia'
+              : TicketCategoryModel(
+                  id: category.id,
+                  name: category.name,
+                  dayType: category.dayType,
+                  price: category.price,
+                  quota: category.quota,
+                ).displayName,
+          qty: item.qty,
+          unitPrice: unitPrice,
+          subtotal: item.subtotal,
+        );
+      }).toList();
+    });
 
 // Computed provider untuk sisa kuota per kategori
 // Otomatis di-recompute ketika kategoris atau transactionItems berubah
-final sisaKuotaPerKategoriProvider = FutureProvider<Map<String, int>>((ref) async {
+final sisaKuotaPerKategoriProvider = FutureProvider<Map<String, int>>((
+  ref,
+) async {
   final db = ref.watch(databaseProvider);
   final kategoris = await ref.watch(kategoriTiketStreamProvider.future);
-  ref.watch(transactionItemsStreamProvider); // Trigger recompute ketika transaction items berubah
-  ref.watch(transactionsStreamProvider); // Trigger recompute ketika transaksi di-void (isVoided berubah)
-  
+  ref.watch(
+    transactionItemsStreamProvider,
+  ); // Trigger recompute ketika transaction items berubah
+  ref.watch(
+    transactionsStreamProvider,
+  ); // Trigger recompute ketika transaksi di-void (isVoided berubah)
+
   return calculateSisaKuotaPerKategori(db, kategoris);
 });
 
 // State filter periode rekap: hari ini, tanggal tertentu, rentang tanggal, semua waktu.
-final rekapDateFilterProvider = StateProvider<RekapDateFilter>((ref) => RekapDateFilter.hariIni());
+final rekapDateFilterProvider = StateProvider<RekapDateFilter>(
+  (ref) => RekapDateFilter.hariIni(),
+);
 
-DateTime _startOfDay(DateTime date) => DateTime(date.year, date.month, date.day);
+DateTime _startOfDay(DateTime date) =>
+    DateTime(date.year, date.month, date.day);
 
-DateTime _endExclusiveOfDay(DateTime date) => _startOfDay(date).add(const Duration(days: 1));
+DateTime _endExclusiveOfDay(DateTime date) =>
+    _startOfDay(date).add(const Duration(days: 1));
 
-({DateTime? startAt, DateTime? endAtExclusive}) _resolveRekapDateBounds(RekapDateFilter filter) {
+({DateTime? startAt, DateTime? endAtExclusive}) _resolveRekapDateBounds(
+  RekapDateFilter filter,
+) {
   switch (filter.periodType) {
     case RekapPeriodType.hariIni:
       final today = _startOfDay(DateTime.now());
-      return (startAt: today, endAtExclusive: today.add(const Duration(days: 1)));
+      return (
+        startAt: today,
+        endAtExclusive: today.add(const Duration(days: 1)),
+      );
     case RekapPeriodType.tanggalTertentu:
       final selected = _startOfDay(filter.selectedDate);
-      return (startAt: selected, endAtExclusive: selected.add(const Duration(days: 1)));
+      return (
+        startAt: selected,
+        endAtExclusive: selected.add(const Duration(days: 1)),
+      );
     case RekapPeriodType.rentangTanggal:
       if (filter.rangeStart == null || filter.rangeEnd == null) {
         final fallback = _startOfDay(DateTime.now());
-        return (startAt: fallback, endAtExclusive: fallback.add(const Duration(days: 1)));
+        return (
+          startAt: fallback,
+          endAtExclusive: fallback.add(const Duration(days: 1)),
+        );
       }
 
       final start = _startOfDay(filter.rangeStart!);
       final end = _startOfDay(filter.rangeEnd!);
       final lower = start.isBefore(end) ? start : end;
       final upper = start.isAfter(end) ? start : end;
-      return (startAt: lower, endAtExclusive: upper.add(const Duration(days: 1)));
+      return (
+        startAt: lower,
+        endAtExclusive: upper.add(const Duration(days: 1)),
+      );
     case RekapPeriodType.semuaWaktu:
       return (startAt: null, endAtExclusive: null);
   }
@@ -219,7 +279,15 @@ Future<List<RekapPenjualanItem>> _loadRekapPenjualanByRange(
     aggregated[item.categoryId] = (
       qty: (current?.qty ?? 0) + item.qty,
       subtotal: (current?.subtotal ?? 0) + item.subtotal,
-      kategoriName: category?.name ?? current?.kategoriName ?? item.categoryId,
+      kategoriName: category == null
+          ? (current?.kategoriName ?? item.categoryId)
+          : TicketCategoryModel(
+              id: category.id,
+              name: category.name,
+              dayType: category.dayType,
+              price: category.price,
+              quota: category.quota,
+            ).displayName,
     );
   }
 
@@ -240,12 +308,20 @@ Future<List<RekapPenjualanItem>> _loadRekapPenjualanByRange(
 
 // Provider untuk rekap penjualan per kategori dengan filter periode fleksibel.
 // EXCLUDE transaksi yang di-void (isVoided = true).
-final rekapPenjualanProvider = FutureProvider<List<RekapPenjualanItem>>((ref) async {
+final rekapPenjualanProvider = FutureProvider<List<RekapPenjualanItem>>((
+  ref,
+) async {
   final db = ref.watch(databaseProvider);
   final dateFilter = ref.watch(rekapDateFilterProvider);
-  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
-  ref.watch(transactionItemsStreamProvider); // Trigger update saat items berubah
-  ref.watch(kategoriTiketStreamProvider); // Trigger update saat nama kategori berubah
+  ref.watch(
+    transactionsStreamProvider,
+  ); // Trigger update saat transaksi berubah
+  ref.watch(
+    transactionItemsStreamProvider,
+  ); // Trigger update saat items berubah
+  ref.watch(
+    kategoriTiketStreamProvider,
+  ); // Trigger update saat nama kategori berubah
 
   final bounds = _resolveRekapDateBounds(dateFilter);
   return _loadRekapPenjualanByRange(
@@ -256,10 +332,16 @@ final rekapPenjualanProvider = FutureProvider<List<RekapPenjualanItem>>((ref) as
 });
 
 // Provider khusus untuk data rekap hari ini saja (untuk rekonsiliasi kas)
-final rekapPenjualanHariIniProvider = FutureProvider<List<RekapPenjualanItem>>((ref) async {
+final rekapPenjualanHariIniProvider = FutureProvider<List<RekapPenjualanItem>>((
+  ref,
+) async {
   final db = ref.watch(databaseProvider);
-  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
-  ref.watch(transactionItemsStreamProvider); // Trigger update saat items berubah
+  ref.watch(
+    transactionsStreamProvider,
+  ); // Trigger update saat transaksi berubah
+  ref.watch(
+    transactionItemsStreamProvider,
+  ); // Trigger update saat items berubah
 
   final now = DateTime.now();
   return _loadRekapPenjualanByRange(
@@ -272,28 +354,32 @@ final rekapPenjualanHariIniProvider = FutureProvider<List<RekapPenjualanItem>>((
 // Provider untuk total sistem tunai hari ini (untuk rekonsiliasi kas)
 final totalSistemTunaiHariIniProvider = FutureProvider<int>((ref) async {
   final db = ref.watch(databaseProvider);
-  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
-  
+  ref.watch(
+    transactionsStreamProvider,
+  ); // Trigger update saat transaksi berubah
+
   // Hitung periode hari ini
   final DateTime now = DateTime.now();
   final DateTime startOfDay = DateTime(now.year, now.month, now.day);
   final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
-  
+
   // Query transaction hari ini yang TIDAK di-void dan payment method = "tunai"
-  final transactions = await (db.select(db.transactions)
-        ..where((t) => 
-          t.createdAt.isBiggerOrEqualValue(startOfDay) & 
-          t.createdAt.isSmallerThanValue(endOfDay) &
-          t.isVoided.equals(false) &
-          t.paymentMethod.equals(PaymentConstants.tunai)))
-      .get();
-  
+  final transactions =
+      await (db.select(db.transactions)..where(
+            (t) =>
+                t.createdAt.isBiggerOrEqualValue(startOfDay) &
+                t.createdAt.isSmallerThanValue(endOfDay) &
+                t.isVoided.equals(false) &
+                t.paymentMethod.equals(PaymentConstants.tunai),
+          ))
+          .get();
+
   // Jumlahkan total
   int total = 0;
   for (final transaction in transactions) {
     total += transaction.total;
   }
-  
+
   return total;
 });
 
@@ -301,18 +387,22 @@ final totalSistemTunaiHariIniProvider = FutureProvider<int>((ref) async {
 // Ini hanya untuk info ringkasan, tidak digunakan untuk selisih tunai.
 final totalKeseluruhanHariIniProvider = FutureProvider<int>((ref) async {
   final db = ref.watch(databaseProvider);
-  ref.watch(transactionsStreamProvider); // Trigger update saat transaksi berubah
+  ref.watch(
+    transactionsStreamProvider,
+  ); // Trigger update saat transaksi berubah
 
   final DateTime now = DateTime.now();
   final DateTime startOfDay = DateTime(now.year, now.month, now.day);
   final DateTime endOfDay = startOfDay.add(const Duration(days: 1));
 
-  final transactions = await (db.select(db.transactions)
-        ..where((t) =>
-          t.createdAt.isBiggerOrEqualValue(startOfDay) &
-          t.createdAt.isSmallerThanValue(endOfDay) &
-          t.isVoided.equals(false)))
-      .get();
+  final transactions =
+      await (db.select(db.transactions)..where(
+            (t) =>
+                t.createdAt.isBiggerOrEqualValue(startOfDay) &
+                t.createdAt.isSmallerThanValue(endOfDay) &
+                t.isVoided.equals(false),
+          ))
+          .get();
 
   int total = 0;
   for (final transaction in transactions) {
@@ -323,9 +413,10 @@ final totalKeseluruhanHariIniProvider = FutureProvider<int>((ref) async {
 });
 
 // Stream semua shift reconciliations, urut dari terbaru
-final shiftReconciliationsStreamProvider = StreamProvider<List<ShiftReconciliation>>((ref) {
-  final db = ref.watch(databaseProvider);
-  return (db.select(db.shiftReconciliations)
-        ..orderBy([(r) => OrderingTerm.desc(r.createdAt)]))
-      .watch();
-});
+final shiftReconciliationsStreamProvider =
+    StreamProvider<List<ShiftReconciliation>>((ref) {
+      final db = ref.watch(databaseProvider);
+      return (db.select(
+        db.shiftReconciliations,
+      )..orderBy([(r) => OrderingTerm.desc(r.createdAt)])).watch();
+    });

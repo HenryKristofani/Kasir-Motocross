@@ -24,7 +24,8 @@ enum SyncStatus {
 /// 4. shift_reconciliations (independent)
 class SyncService {
   static final SyncService _instance = SyncService._internal();
-  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
 
   factory SyncService() => _instance;
 
@@ -34,21 +35,24 @@ class SyncService {
   late AppDatabase _db;
   late SupabaseClient _supabase;
   StreamSubscription? _connectivitySub;
-  
+
   SyncStatus _status = SyncStatus.idle;
   int _pendingCount = 0;
   String _lastError = '';
   DateTime? _lastSyncAttempt;
   DateTime? _lastLocalMutationSyncTrigger;
   int _consecutiveFailures = 0;
-  static const int _minSyncDelaySeconds = 15; // Minimum 15 detik antar sync attempt
+  static const int _minSyncDelaySeconds =
+      15; // Minimum 15 detik antar sync attempt
   static const int _maxRetryDelaySeconds = 60; // Max 60 detik backoff
-  static const int _localMutationSyncThrottleSeconds = 3; // Max satu trigger local-write per 3s
+  static const int _localMutationSyncThrottleSeconds =
+      3; // Max satu trigger local-write per 3s
 
-  // Public getters untuk UI: 
+  // Public getters untuk UI:
   int get pendingCount => _pendingCount;
   bool get isSyncing => _status == SyncStatus.syncing;
-  bool get hasError => _status == SyncStatus.error || _status == SyncStatus.errorWaitingRetry;
+  bool get hasError =>
+      _status == SyncStatus.error || _status == SyncStatus.errorWaitingRetry;
   String get lastError => _lastError;
   SyncStatus get status => _status;
 
@@ -65,19 +69,29 @@ class SyncService {
   /// (misal: setelah fix schema)
   Future<void> forceResyncAllCategories() async {
     if (_status == SyncStatus.syncing) {
-      developer.log('[SyncService] Already syncing, skip force resync', name: 'sync');
+      developer.log(
+        '[SyncService] Already syncing, skip force resync',
+        name: 'sync',
+      );
       return;
     }
 
     _lastSyncAttempt = DateTime.now();
     _status = SyncStatus.syncing;
-    developer.log('[SyncService] FORCE re-syncing ALL categories...', name: 'sync');
+    developer.log(
+      '[SyncService] FORCE re-syncing ALL categories...',
+      name: 'sync',
+    );
 
     try {
       // Reset ALL categories to isSynced = false dulu
-      await (_db.update(_db.ticketCategories))
-          .write(const TicketCategoriesCompanion(isSynced: drift.Value(false)));
-      developer.log('[SyncService] Reset all categories isSynced to false', name: 'sync');
+      await (_db.update(
+        _db.ticketCategories,
+      )).write(const TicketCategoriesCompanion(isSynced: drift.Value(false)));
+      developer.log(
+        '[SyncService] Reset all categories isSynced to false',
+        name: 'sync',
+      );
 
       // Sekarang sync ulang semua
       await _syncTicketCategories();
@@ -85,7 +99,10 @@ class SyncService {
       _consecutiveFailures = 0;
       _lastError = '';
       _status = SyncStatus.idle;
-      developer.log('[SyncService] Force re-sync categories completed successfully', name: 'sync');
+      developer.log(
+        '[SyncService] Force re-sync categories completed successfully',
+        name: 'sync',
+      );
     } catch (e) {
       _consecutiveFailures++;
       _lastError = e.toString();
@@ -93,16 +110,21 @@ class SyncService {
       developer.log(
         '[SyncService] Force re-sync error: $e',
         name: 'sync',
-        error: e
+        error: e,
       );
     }
   }
 
   /// Listen to connectivity changes: ketika online, trigger sync dengan delay
   void _setupConnectivityListener() {
-    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) async {
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((
+      results,
+    ) async {
       final isConnected = !results.contains(ConnectivityResult.none);
-      developer.log('[SyncService] Connectivity changed: $isConnected', name: 'sync');
+      developer.log(
+        '[SyncService] Connectivity changed: $isConnected',
+        name: 'sync',
+      );
 
       if (isConnected && _status != SyncStatus.syncing) {
         // Cek apakah cukup delay sejak last attempt
@@ -117,18 +139,23 @@ class SyncService {
   /// Check if enough time has passed since last sync attempt
   bool _shouldRetry() {
     if (_lastSyncAttempt == null) return true;
-    
-    final secondsSinceLast = DateTime.now().difference(_lastSyncAttempt!).inSeconds;
-    final minDelay = _consecutiveFailures == 0 
-        ? _minSyncDelaySeconds 
-        : (_minSyncDelaySeconds * (_consecutiveFailures)).clamp(0, _maxRetryDelaySeconds);
-    
+
+    final secondsSinceLast = DateTime.now()
+        .difference(_lastSyncAttempt!)
+        .inSeconds;
+    final minDelay = _consecutiveFailures == 0
+        ? _minSyncDelaySeconds
+        : (_minSyncDelaySeconds * (_consecutiveFailures)).clamp(
+            0,
+            _maxRetryDelaySeconds,
+          );
+
     final shouldRetry = secondsSinceLast >= minDelay;
     if (!shouldRetry) {
       developer.log(
         '[SyncService] Retry delayed. Failures: $_consecutiveFailures, '
         'Wait ${minDelay - secondsSinceLast}s more',
-        name: 'sync'
+        name: 'sync',
       );
     }
     return shouldRetry;
@@ -140,20 +167,28 @@ class SyncService {
   void triggerLocalMutationSync() {
     Future.microtask(() async {
       if (_status == SyncStatus.syncing) {
-        developer.log('[SyncService] Skip local mutation sync: already syncing', name: 'sync');
+        developer.log(
+          '[SyncService] Skip local mutation sync: already syncing',
+          name: 'sync',
+        );
         return;
       }
 
       final connectivityResults = await _connectivity.checkConnectivity();
       final isOnline = !connectivityResults.contains(ConnectivityResult.none);
       if (!isOnline) {
-        developer.log('[SyncService] Skip local mutation sync: offline', name: 'sync');
+        developer.log(
+          '[SyncService] Skip local mutation sync: offline',
+          name: 'sync',
+        );
         return;
       }
 
       final now = DateTime.now();
       if (_lastLocalMutationSyncTrigger != null) {
-        final secondsSinceLastTrigger = now.difference(_lastLocalMutationSyncTrigger!).inSeconds;
+        final secondsSinceLastTrigger = now
+            .difference(_lastLocalMutationSyncTrigger!)
+            .inSeconds;
         if (secondsSinceLastTrigger < _localMutationSyncThrottleSeconds) {
           developer.log(
             '[SyncService] Skip local mutation sync: throttled for ${_localMutationSyncThrottleSeconds - secondsSinceLastTrigger} s',
@@ -164,7 +199,8 @@ class SyncService {
       }
       _lastLocalMutationSyncTrigger = now;
 
-      final allowImmediate = _lastSyncAttempt == null ||
+      final allowImmediate =
+          _lastSyncAttempt == null ||
           _consecutiveFailures > 0 ||
           now.difference(_lastSyncAttempt!).inSeconds >= _minSyncDelaySeconds;
 
@@ -176,7 +212,10 @@ class SyncService {
         return;
       }
 
-      developer.log('[SyncService] Local mutation sync trigger fired', name: 'sync');
+      developer.log(
+        '[SyncService] Local mutation sync trigger fired',
+        name: 'sync',
+      );
       await syncPending();
     });
   }
@@ -184,7 +223,10 @@ class SyncService {
   static void showSuccessSnackBar(int syncedCount) {
     final messenger = scaffoldMessengerKey.currentState;
     if (messenger == null) {
-      developer.log('[SyncService] SnackBar skipped: no ScaffoldMessenger attached', name: 'sync');
+      developer.log(
+        '[SyncService] SnackBar skipped: no ScaffoldMessenger attached',
+        name: 'sync',
+      );
       return;
     }
 
@@ -219,7 +261,10 @@ class SyncService {
 
     _lastSyncAttempt = DateTime.now();
     _status = SyncStatus.syncing;
-    developer.log('[SyncService] Starting sync... (Attempt #${_consecutiveFailures + 1})', name: 'sync');
+    developer.log(
+      '[SyncService] Starting sync... (Attempt #${_consecutiveFailures + 1})',
+      name: 'sync',
+    );
 
     var syncedThisCycle = 0;
 
@@ -249,18 +294,24 @@ class SyncService {
         showSuccessSnackBar(syncedThisCycle);
       }
 
-      developer.log('[SyncService] Sync completed successfully. Pending: $_pendingCount, synced this cycle: $syncedThisCycle', name: 'sync');
+      developer.log(
+        '[SyncService] Sync completed successfully. Pending: $_pendingCount, synced this cycle: $syncedThisCycle',
+        name: 'sync',
+      );
     } catch (e) {
       _consecutiveFailures++;
       _lastError = e.toString();
       _status = SyncStatus.errorWaitingRetry;
 
-      final retryDelay = (_minSyncDelaySeconds * _consecutiveFailures).clamp(0, _maxRetryDelaySeconds);
+      final retryDelay = (_minSyncDelaySeconds * _consecutiveFailures).clamp(
+        0,
+        _maxRetryDelaySeconds,
+      );
       developer.log(
         '[SyncService] Sync error (failure #$_consecutiveFailures): $e\n'
         'Will retry in ${retryDelay}s',
         name: 'sync',
-        error: e
+        error: e,
       );
     }
   }
@@ -268,16 +319,19 @@ class SyncService {
   /// Sync semua transaksi yang belum ter-sync (isSynced = false)
   Future<int> _syncTransactions() async {
     try {
-      final unsynced = await (_db.select(_db.transactions)
-            ..where((t) => t.isSynced.equals(false)))
-          .get();
+      final unsynced = await (_db.select(
+        _db.transactions,
+      )..where((t) => t.isSynced.equals(false))).get();
 
       if (unsynced.isEmpty) {
         developer.log('[SyncService] No pending transactions', name: 'sync');
         return 0;
       }
 
-      developer.log('[SyncService] Syncing ${unsynced.length} transactions', name: 'sync');
+      developer.log(
+        '[SyncService] Syncing ${unsynced.length} transactions',
+        name: 'sync',
+      );
 
       final syncedIds = <String>[];
 
@@ -296,12 +350,22 @@ class SyncService {
           });
 
           syncedIds.add(txn.id);
-          developer.log('[SyncService] ✓ Transaction synced: ${txn.id}', name: 'sync');
+          developer.log(
+            '[SyncService] ✓ Transaction synced: ${txn.id}',
+            name: 'sync',
+          );
         } catch (e) {
           _lastError = 'Transaction sync failed for ${txn.id}: $e';
-          developer.log('[SyncService] ✗ Transaction sync failed: ${txn.id}\nError: $e', name: 'sync', error: e);
+          developer.log(
+            '[SyncService] ✗ Transaction sync failed: ${txn.id}\nError: $e',
+            name: 'sync',
+            error: e,
+          );
           if (e.toString().contains('local_number')) {
-            developer.log('[SyncService] → Possible local_number type mismatch. Verify schema: ALTER TABLE transactions ALTER COLUMN local_number TYPE TEXT;', name: 'sync');
+            developer.log(
+              '[SyncService] → Possible local_number type mismatch. Verify schema: ALTER TABLE transactions ALTER COLUMN local_number TYPE TEXT;',
+              name: 'sync',
+            );
           }
         }
       }
@@ -319,7 +383,11 @@ class SyncService {
       return syncedIds.length;
     } catch (e) {
       _lastError = 'Error in _syncTransactions: $e';
-      developer.log('[SyncService] Error in _syncTransactions: $e', name: 'sync', error: e);
+      developer.log(
+        '[SyncService] Error in _syncTransactions: $e',
+        name: 'sync',
+        error: e,
+      );
       rethrow; // Re-throw untuk stop sync chain - transactions are parent
     }
   }
@@ -328,16 +396,22 @@ class SyncService {
   /// Ini mencegah FK constraint errors dengan memastikan parent records ada
   Future<int> _verifyAndSyncTransactionItems() async {
     try {
-      final unsynced = await (_db.select(_db.transactionItems)
-            ..where((ti) => ti.isSynced.equals(false)))
-          .get();
+      final unsynced = await (_db.select(
+        _db.transactionItems,
+      )..where((ti) => ti.isSynced.equals(false))).get();
 
       if (unsynced.isEmpty) {
-        developer.log('[SyncService] No pending transaction_items', name: 'sync');
+        developer.log(
+          '[SyncService] No pending transaction_items',
+          name: 'sync',
+        );
         return 0;
       }
 
-      developer.log('[SyncService] Syncing ${unsynced.length} transaction_items', name: 'sync');
+      developer.log(
+        '[SyncService] Syncing ${unsynced.length} transaction_items',
+        name: 'sync',
+      );
 
       final syncedIds = <String>[];
 
@@ -345,17 +419,21 @@ class SyncService {
       final remoteCategories = await _supabase
           .from('ticket_categories')
           .select('id')
-          .then((data) => (data as List).map((row) => row['id'] as String).toSet());
+          .then(
+            (data) => (data as List).map((row) => row['id'] as String).toSet(),
+          );
 
       final remoteTransactions = await _supabase
           .from('transactions')
           .select('id')
-          .then((data) => (data as List).map((row) => row['id'] as String).toSet());
+          .then(
+            (data) => (data as List).map((row) => row['id'] as String).toSet(),
+          );
 
       developer.log(
         '[SyncService] Verified remote data: ${remoteCategories.length} categories, '
         '${remoteTransactions.length} transactions',
-        name: 'sync'
+        name: 'sync',
       );
 
       for (final item in unsynced) {
@@ -363,7 +441,7 @@ class SyncService {
           developer.log(
             '[SyncService] ⚠️ Skipping item ${item.id}: category ${item.categoryId} not found in Supabase. '
             'Possible causes: category failed to sync previously, or not yet synced.',
-            name: 'sync'
+            name: 'sync',
           );
           continue;
         }
@@ -372,7 +450,7 @@ class SyncService {
           developer.log(
             '[SyncService] ⚠️ Skipping item ${item.id}: transaction ${item.transactionId} not found in Supabase. '
             'Possible causes: transaction failed to sync previously, or not yet synced.',
-            name: 'sync'
+            name: 'sync',
           );
           continue;
         }
@@ -387,10 +465,17 @@ class SyncService {
           });
 
           syncedIds.add(item.id);
-          developer.log('[SyncService] ✓ Item synced: ${item.id}', name: 'sync');
+          developer.log(
+            '[SyncService] ✓ Item synced: ${item.id}',
+            name: 'sync',
+          );
         } catch (e) {
           _lastError = 'Transaction item sync failed for ${item.id}: $e';
-          developer.log('[SyncService] ✗ Item sync failed: ${item.id}\nError: $e', name: 'sync', error: e);
+          developer.log(
+            '[SyncService] ✗ Item sync failed: ${item.id}\nError: $e',
+            name: 'sync',
+            error: e,
+          );
         }
       }
 
@@ -407,7 +492,11 @@ class SyncService {
       return syncedIds.length;
     } catch (e) {
       _lastError = 'Error in _verifyAndSyncTransactionItems: $e';
-      developer.log('[SyncService] Error verifying/syncing items: $e', name: 'sync', error: e);
+      developer.log(
+        '[SyncService] Error verifying/syncing items: $e',
+        name: 'sync',
+        error: e,
+      );
       // Don't rethrow - item sync failures shouldn't stop reconciliations
       return 0;
     }
@@ -418,44 +507,71 @@ class SyncService {
   /// CRITICAL: Ini adalah parent table. Jika gagal, seluruh sync chain dihentikan
   Future<int> _syncTicketCategories() async {
     try {
-      final unsynced = await (_db.select(_db.ticketCategories)
-            ..where((c) => c.isSynced.equals(false)))
-          .get();
+      final unsynced = await (_db.select(
+        _db.ticketCategories,
+      )..where((c) => c.isSynced.equals(false))).get();
 
       if (unsynced.isEmpty) {
-        developer.log('[SyncService] No pending ticket_categories', name: 'sync');
+        developer.log(
+          '[SyncService] No pending ticket_categories',
+          name: 'sync',
+        );
         return 0;
       }
 
-      developer.log('[SyncService] Syncing ${unsynced.length} ticket_categories (CRITICAL PARENT)', name: 'sync');
+      developer.log(
+        '[SyncService] Syncing ${unsynced.length} ticket_categories (CRITICAL PARENT)',
+        name: 'sync',
+      );
 
       final syncedIds = <String>[];
       for (final cat in unsynced) {
+        final payload = {
+          'id': cat.id,
+          'name': cat.name,
+          'day_type': cat.dayType,
+          'price': cat.price,
+          'quota': cat.quota,
+        };
         try {
-          await _supabase.from('ticket_categories').upsert({
-            'id': cat.id,
-            'name': cat.name,
-            'price': cat.price,
-            'quota': cat.quota, // nullable, bisa null jika unlimited
-          });
+          await _supabase.from('ticket_categories').upsert(payload);
 
           syncedIds.add(cat.id);
-          developer.log('[SyncService] ✓ Category synced: ${cat.id}', name: 'sync');
+          developer.log(
+            '[SyncService] ✓ Category synced: ${cat.id}',
+            name: 'sync',
+          );
         } catch (e) {
-          _lastError = 'Category sync failed for ${cat.id}: $e';
-          developer.log('[SyncService] ✗ Category sync failed: ${cat.id}\nError: $e', name: 'sync', error: e);
-          if (e.toString().contains('quota')) {
+          final errorText = e.toString();
+          final schemaHint =
+              errorText.contains('day_type') ||
+                  errorText.contains('schema cache')
+              ? ' Supabase belum memiliki kolom day_type. Jalankan migration di docs/SUPABASE_SCHEMA.sql.'
+              : errorText.contains('quota')
+              ? ' Pastikan kolom quota nullable di Supabase.'
+              : '';
+          _lastError =
+              'Category sync failed for ${cat.id}: $errorText$schemaHint';
+          developer.log(
+            '[SyncService] ✗ Category sync failed: ${cat.id}\n'
+            'Payload: $payload\nError: $errorText$schemaHint',
+            name: 'sync',
+            error: e,
+          );
+          if (errorText.contains('quota')) {
             developer.log(
               '[SyncService] → Quota column error. Check Supabase schema: '
               'ALTER TABLE ticket_categories ALTER COLUMN quota DROP NOT NULL;',
-              name: 'sync'
+              name: 'sync',
             );
           }
         }
       }
 
       if (syncedIds.isEmpty) {
-        throw Exception('ALL ticket_categories failed to sync. Check Supabase schema and permissions.');
+        throw Exception(
+          'ALL ticket_categories failed to sync. Check Supabase schema and permissions.',
+        );
       }
 
       await _db.batch((batch) {
@@ -466,11 +582,18 @@ class SyncService {
         );
       });
 
-      developer.log('[SyncService] Successfully synced ${syncedIds.length}/${unsynced.length} categories', name: 'sync');
+      developer.log(
+        '[SyncService] Successfully synced ${syncedIds.length}/${unsynced.length} categories',
+        name: 'sync',
+      );
       return syncedIds.length;
     } catch (e) {
       _lastError = 'Error in _syncTicketCategories: $e';
-      developer.log('[SyncService] CRITICAL: Error in _syncTicketCategories: $e', name: 'sync', error: e);
+      developer.log(
+        '[SyncService] CRITICAL: Error in _syncTicketCategories: $e',
+        name: 'sync',
+        error: e,
+      );
       rethrow; // CRITICAL: Categories are parent. Stop entire chain.
     }
   }
@@ -478,16 +601,22 @@ class SyncService {
   /// Sync semua shift reconciliations yang belum ter-sync
   Future<int> _syncShiftReconciliations() async {
     try {
-      final unsynced = await (_db.select(_db.shiftReconciliations)
-            ..where((sr) => sr.isSynced.equals(false)))
-          .get();
+      final unsynced = await (_db.select(
+        _db.shiftReconciliations,
+      )..where((sr) => sr.isSynced.equals(false))).get();
 
       if (unsynced.isEmpty) {
-        developer.log('[SyncService] No pending shift_reconciliations', name: 'sync');
+        developer.log(
+          '[SyncService] No pending shift_reconciliations',
+          name: 'sync',
+        );
         return 0;
       }
 
-      developer.log('[SyncService] Syncing ${unsynced.length} shift_reconciliations', name: 'sync');
+      developer.log(
+        '[SyncService] Syncing ${unsynced.length} shift_reconciliations',
+        name: 'sync',
+      );
 
       final syncedIds = <String>[];
       for (final recon in unsynced) {
@@ -503,10 +632,17 @@ class SyncService {
           });
 
           syncedIds.add(recon.id);
-          developer.log('[SyncService] ✓ Reconciliation synced: ${recon.id}', name: 'sync');
+          developer.log(
+            '[SyncService] ✓ Reconciliation synced: ${recon.id}',
+            name: 'sync',
+          );
         } catch (e) {
           _lastError = 'Reconciliation sync failed for ${recon.id}: $e';
-          developer.log('[SyncService] ✗ Reconciliation sync failed: ${recon.id}\nError: $e', name: 'sync', error: e);
+          developer.log(
+            '[SyncService] ✗ Reconciliation sync failed: ${recon.id}\nError: $e',
+            name: 'sync',
+            error: e,
+          );
         }
       }
 
@@ -523,7 +659,11 @@ class SyncService {
       return syncedIds.length;
     } catch (e) {
       _lastError = 'Error in _syncShiftReconciliations: $e';
-      developer.log('[SyncService] Error in _syncShiftReconciliations: $e', name: 'sync', error: e);
+      developer.log(
+        '[SyncService] Error in _syncShiftReconciliations: $e',
+        name: 'sync',
+        error: e,
+      );
       return 0;
     }
   }
@@ -532,25 +672,33 @@ class SyncService {
   Future<void> _updatePendingCount() async {
     try {
       final pendingTxns =
-          await (_db.select(_db.transactions)..where((t) => t.isSynced.equals(false)))
+          await (_db.select(_db.transactions)
+                ..where((t) => t.isSynced.equals(false)))
               .get()
               .then((rows) => rows.length);
       final pendingItems =
-          await (_db.select(_db.transactionItems)..where((ti) => ti.isSynced.equals(false)))
+          await (_db.select(_db.transactionItems)
+                ..where((ti) => ti.isSynced.equals(false)))
               .get()
               .then((rows) => rows.length);
       final pendingCats =
-          await (_db.select(_db.ticketCategories)..where((c) => c.isSynced.equals(false)))
+          await (_db.select(_db.ticketCategories)
+                ..where((c) => c.isSynced.equals(false)))
               .get()
               .then((rows) => rows.length);
       final pendingRecons =
-          await (_db.select(_db.shiftReconciliations)..where((sr) => sr.isSynced.equals(false)))
+          await (_db.select(_db.shiftReconciliations)
+                ..where((sr) => sr.isSynced.equals(false)))
               .get()
               .then((rows) => rows.length);
 
       _pendingCount = pendingTxns + pendingItems + pendingCats + pendingRecons;
     } catch (e) {
-      developer.log('[SyncService] Error updating pending count: $e', name: 'sync', error: e);
+      developer.log(
+        '[SyncService] Error updating pending count: $e',
+        name: 'sync',
+        error: e,
+      );
     }
   }
 

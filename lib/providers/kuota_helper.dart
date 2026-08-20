@@ -8,30 +8,70 @@ Future<Map<String, int>> calculateSisaKuotaPerKategori(
   List<TicketCategoryModel> kategoris,
 ) async {
   final result = <String, int>{};
-  
-  for (final kat in kategoris) {
-    if (kat.quota != null) {
-      // Hitung total qty terjual untuk kategori ini (HANYA dari transaksi yang TIDAK di-void)
-      // Step 1: Get all active (non-voided) transaction IDs
-      final activeTransactions = await (db.select(db.transactions)
-        ..where((t) => t.isVoided.equals(false)))
-        .get();
-      final activeTransactionIds = activeTransactions.map((t) => t.id).toList();
-      
-      // Step 2: Query items for this category
-      final items = await (db.select(db.transactionItems)
-        ..where((i) => i.categoryId.equals(kat.id)))
-        .get();
-      
-      // Step 3: Filter items to only those from active transactions
-      final activeItems = items.where((item) => activeTransactionIds.contains(item.transactionId)).toList();
-      final totalTerjual = activeItems.fold<int>(0, (sum, item) => sum + item.qty);
-      
-      // Sisa kuota = quota - total terjual (hanya dari transaksi aktif)
-      final sisa = kat.quota! - totalTerjual;
-      result[kat.id] = sisa > 0 ? sisa : 0;
+
+  final activeTransactions = await (db.select(
+    db.transactions,
+  )..where((t) => t.isVoided.equals(false))).get();
+  final activeTransactionIds = activeTransactions
+      .map((transaction) => transaction.id)
+      .toSet();
+  final items = await db.select(db.transactionItems).get();
+  final soldByCategory = <String, int>{};
+  final categoriesById = {
+    for (final category in kategoris) category.id: category,
+  };
+
+  for (final item in items) {
+    if (activeTransactionIds.contains(item.transactionId)) {
+      soldByCategory[item.categoryId] =
+          (soldByCategory[item.categoryId] ?? 0) + item.qty;
+      final category = categoriesById[item.categoryId];
+      if (category?.isBundling == true) {
+        final day1 = kategoris.where(
+          (candidate) =>
+              candidate.name == category!.name && candidate.dayType == 'day1',
+        );
+        final day2 = kategoris.where(
+          (candidate) =>
+              candidate.name == category!.name && candidate.dayType == 'day2',
+        );
+        for (final dayCategory in [...day1, ...day2]) {
+          soldByCategory[dayCategory.id] =
+              (soldByCategory[dayCategory.id] ?? 0) + item.qty;
+        }
+      }
     }
   }
-  
+
+  final day1ByName = <String, TicketCategoryModel>{};
+  final day2ByName = <String, TicketCategoryModel>{};
+  for (final category in kategoris) {
+    if (category.dayType == 'day1') day1ByName[category.name] = category;
+    if (category.dayType == 'day2') day2ByName[category.name] = category;
+  }
+
+  for (final category in kategoris) {
+    if (category.isBundling) {
+      final day1 = day1ByName[category.name];
+      final day2 = day2ByName[category.name];
+      if (day1 != null && day2 != null) {
+        final day1Remaining =
+            (day1.quota ?? 0) - (soldByCategory[day1.id] ?? 0);
+        final day2Remaining =
+            (day2.quota ?? 0) - (soldByCategory[day2.id] ?? 0);
+        result[category.id] = [
+          day1Remaining,
+          day2Remaining,
+        ].reduce((a, b) => a < b ? a : b).clamp(0, 1 << 31);
+      }
+    } else if (category.quota != null) {
+      result[category.id] =
+          (category.quota! - (soldByCategory[category.id] ?? 0)).clamp(
+            0,
+            1 << 31,
+          );
+    }
+  }
+
   return result;
 }
