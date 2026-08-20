@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   id TEXT PRIMARY KEY,
   local_number TEXT NOT NULL,
   device_id TEXT NOT NULL,
+  pic_name TEXT,
   total DECIMAL(10, 2) NOT NULL,
   payment_method TEXT NOT NULL,
   is_voided BOOLEAN DEFAULT false,
@@ -60,6 +61,29 @@ CREATE TABLE IF NOT EXISTS events (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS pic_persons (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pic_persons_name
+  ON pic_persons(name);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'pic_persons'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.pic_persons;
+  END IF;
+END
+$$;
+
 -- Migration untuk database Supabase yang sudah memiliki ticket_categories.
 ALTER TABLE ticket_categories
   ADD COLUMN IF NOT EXISTS day_type TEXT NOT NULL DEFAULT 'day1';
@@ -83,6 +107,9 @@ ALTER TABLE transaction_items
 ALTER TABLE transaction_items
   ADD CONSTRAINT transaction_items_price_option_check
   CHECK (price_option IN ('full', 'half', 'free'));
+
+ALTER TABLE transactions
+  ADD COLUMN IF NOT EXISTS pic_name TEXT;
 
 -- Create indexes untuk performa query
 CREATE INDEX IF NOT EXISTS idx_transactions_device_id ON transactions(device_id);
@@ -144,10 +171,13 @@ $$;
 
 -- Atomic online checkout. This is the only safe stock validation path for
 -- multiple laptops using the same Supabase project.
+DROP FUNCTION IF EXISTS public.create_ticket_sale(TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB);
+
 CREATE OR REPLACE FUNCTION public.create_ticket_sale(
   p_transaction_id TEXT,
   p_local_number TEXT,
   p_device_id TEXT,
+  p_pic_name TEXT,
   p_total INTEGER,
   p_payment_method TEXT,
   p_items JSONB
@@ -237,8 +267,8 @@ BEGIN
     END IF;
   END LOOP;
 
-  INSERT INTO transactions (id, local_number, device_id, total, payment_method, is_voided, created_at)
-  VALUES (p_transaction_id, p_local_number, p_device_id, p_total, p_payment_method, false, NOW());
+  INSERT INTO transactions (id, local_number, device_id, pic_name, total, payment_method, is_voided, created_at)
+  VALUES (p_transaction_id, p_local_number, p_device_id, p_pic_name, p_total, p_payment_method, false, NOW());
 
   FOR item IN SELECT value FROM jsonb_array_elements(p_items)
   LOOP

@@ -348,6 +348,7 @@ class SyncService {
             'id': txn.id,
             'local_number': txn.localNumber,
             'device_id': txn.deviceId,
+            'pic_name': txn.picName,
             'total': txn.total,
             'payment_method': txn.paymentMethod,
             'is_voided': txn.isVoided,

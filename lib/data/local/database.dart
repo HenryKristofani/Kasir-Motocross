@@ -22,6 +22,7 @@ class Transactions extends Table {
   TextColumn get id => text()(); // UUID
   TextColumn get localNumber => text()(); // mis. A-0001
   TextColumn get deviceId => text()();
+  TextColumn get picName => text().nullable()();
   IntColumn get total => integer()();
   TextColumn get paymentMethod => text()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
@@ -73,7 +74,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -102,6 +103,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (oldVersion < 6) {
           await m.addColumn(transactionItems, transactionItems.priceOption);
+        }
+        if (oldVersion < 7) {
+          await m.addColumn(transactions, transactions.picName);
         }
       },
     );

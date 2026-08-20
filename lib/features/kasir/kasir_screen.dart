@@ -11,6 +11,8 @@ import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
 import '../settings/kategori_tiket_screen.dart';
 import '../../core/utils/error_message.dart';
+import '../../providers/pic_provider.dart';
+import '../settings/pic_screen.dart';
 
 class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
@@ -19,10 +21,75 @@ class KasirScreen extends ConsumerWidget {
     return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
+  Future<void> _choosePicThenPayment(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+  ) async {
+    final picName = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Consumer(
+        builder: (context, ref, _) {
+          final pics = ref.watch(picStreamProvider);
+          return AlertDialog(
+            title: const Text('Pilih PIC Transaksi'),
+            content: SizedBox(
+              width: 320,
+              child: pics.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Text(appErrorMessage(error)),
+                data: (items) => items.isEmpty
+                    ? const Text(
+                        'Belum ada PIC. Tambahkan PIC terlebih dahulu.',
+                      )
+                    : DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'PIC'),
+                        items: items
+                            .map(
+                              (pic) => DropdownMenuItem(
+                                value: pic.name,
+                                child: Text(pic.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null)
+                            Navigator.pop(dialogContext, value);
+                        },
+                      ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Navigator.push(
+                    dialogContext,
+                    MaterialPageRoute(builder: (_) => const PicScreen()),
+                  );
+                  ref.invalidate(picStreamProvider);
+                },
+                child: const Text('Tambah PIC'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Batal'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (picName != null && context.mounted) {
+      _showPaymentMethodDialog(context, ref, kategoris, picName);
+    }
+  }
+
   void _showPaymentMethodDialog(
     BuildContext context,
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
+    String? picName,
   ) {
     debugPrint(
       '=== _showPaymentMethodDialog called with context valid: ${context.mounted}',
@@ -51,7 +118,7 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _showCashPaymentDialog(context, ref, kategoris);
+              _showCashPaymentDialog(context, ref, kategoris, picName);
             },
             icon: const Icon(Icons.payments),
             label: const Text('Tunai'),
@@ -63,7 +130,7 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _showQRISPaymentDialog(context, ref, kategoris);
+              _showQRISPaymentDialog(context, ref, kategoris, picName);
             },
             icon: const Icon(Icons.qr_code),
             label: const Text('QRIS'),
@@ -81,6 +148,7 @@ class KasirScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
+    String? picName,
   ) {
     final total = ref.read(cartProvider.notifier).total(kategoris);
     final uangMasukController = TextEditingController();
@@ -207,6 +275,7 @@ class KasirScreen extends ConsumerWidget {
                             PaymentConstants.tunai,
                             uangMasuk: uangMasuk,
                             uangKembali: kembalian,
+                            picName: picName,
                           );
                         }
                       : null,
@@ -228,6 +297,7 @@ class KasirScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
+    String? picName,
   ) {
     final total = ref.read(cartProvider.notifier).total(kategoris);
 
@@ -311,7 +381,13 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await _bayar(context, ref, kategoris, PaymentConstants.qris);
+              await _bayar(
+                context,
+                ref,
+                kategoris,
+                PaymentConstants.qris,
+                picName: picName,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.dirtTan,
@@ -476,6 +552,7 @@ class KasirScreen extends ConsumerWidget {
     String paymentMethod, {
     int? uangMasuk,
     int? uangKembali,
+    String? picName,
   }) async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
@@ -510,6 +587,7 @@ class KasirScreen extends ConsumerWidget {
             transactionId: uuid,
             localNumber: 'A-${now.millisecondsSinceEpoch}',
             deviceId: 'device-dev-1',
+            picName: picName,
             total: total,
             paymentMethod: paymentMethod,
             items: items
@@ -542,6 +620,7 @@ class KasirScreen extends ConsumerWidget {
       id: uuid,
       localNumber: 'A-${now.millisecondsSinceEpoch}',
       deviceId: 'device-dev-1',
+      picName: picName,
       total: total,
       paymentMethod: paymentMethod,
       isSynced: false,
@@ -590,7 +669,7 @@ class KasirScreen extends ConsumerWidget {
     final pageContext = context;
 
     void openPaymentDialog() {
-      _showPaymentMethodDialog(pageContext, ref, kategoris);
+      _choosePicThenPayment(pageContext, ref, kategoris);
     }
 
     showModalBottomSheet(
@@ -1199,7 +1278,7 @@ class KasirScreen extends ConsumerWidget {
               child: ElevatedButton(
                 onPressed: cart.isEmpty
                     ? null
-                    : () => _showPaymentMethodDialog(context, ref, kategoris),
+                    : () => _choosePicThenPayment(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),
@@ -1254,7 +1333,7 @@ class KasirScreen extends ConsumerWidget {
               child: ElevatedButton(
                 onPressed: cart.isEmpty
                     ? null
-                    : () => _showPaymentMethodDialog(context, ref, kategoris),
+                    : () => _choosePicThenPayment(context, ref, kategoris),
                 child: const Text('BAYAR'),
               ),
             ),

@@ -69,6 +69,7 @@ final transactionsStreamProvider =
                     id: row['id'] as String,
                     localNumber: row['local_number'] as String,
                     deviceId: row['device_id'] as String,
+                    picName: row['pic_name'] as String?,
                     total: (row['total'] as num).toInt(),
                     paymentMethod: row['payment_method'] as String,
                     isSynced: true,

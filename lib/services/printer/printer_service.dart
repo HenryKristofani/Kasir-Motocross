@@ -189,6 +189,12 @@ class PrinterService {
         width: 9,
       ),
     ]);
+    if (transaction.picName != null && transaction.picName!.isNotEmpty) {
+      buffer += generator.row([
+        PosColumn(text: 'PIC', width: 3),
+        PosColumn(text: transaction.picName!, width: 9),
+      ]);
+    }
     buffer += generator.hr();
     buffer += generator.row([
       PosColumn(

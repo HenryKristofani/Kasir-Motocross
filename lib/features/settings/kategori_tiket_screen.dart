@@ -5,6 +5,7 @@ import '../../data/models/ticket_category_model.dart';
 import '../../providers/kategori_tiket_provider.dart';
 import '../../providers/database_provider.dart';
 import '../../core/utils/error_message.dart';
+import 'pic_screen.dart';
 
 class KategoriTiketScreen extends ConsumerWidget {
   const KategoriTiketScreen({super.key});
@@ -221,7 +222,19 @@ class KategoriTiketScreen extends ConsumerWidget {
     final kategoriStream = ref.watch(kategoriTiketStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('MANAJEMEN KATEGORI TIKET')),
+      appBar: AppBar(
+        title: const Text('MANAJEMEN KATEGORI TIKET'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.people_outline),
+            tooltip: 'Kelola PIC',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PicScreen()),
+            ),
+          ),
+        ],
+      ),
       body: kategoriStream.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, st) => Center(
