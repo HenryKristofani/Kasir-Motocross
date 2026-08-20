@@ -56,6 +56,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   esc_pos_utils: ^1.1.0
   shared_preferences: ^2.5.5
+  excel: ^4.0.6
   esc_pos_bluetooth: ^0.4.1
 
 dev_dependencies:

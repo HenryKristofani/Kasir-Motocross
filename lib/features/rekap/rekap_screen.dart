@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/pos_date_picker.dart';
 import '../../core/utils/error_message.dart';
 import '../../providers/database_provider.dart';
+import '../../services/sales_excel_export_service.dart';
 
 class RekapScreen extends ConsumerWidget {
   const RekapScreen({super.key});
@@ -25,6 +26,33 @@ class RekapScreen extends ConsumerWidget {
 
   String _formatTanggal(DateTime date) {
     return DateFormat('dd MMM yyyy', 'id_ID').format(date);
+  }
+
+  Future<void> _exportExcel(
+    BuildContext context,
+    WidgetRef ref,
+    RekapDateFilter filter,
+  ) async {
+    try {
+      final transactions = await ref.read(transactionsStreamProvider.future);
+      final items = await ref.read(transactionItemsStreamProvider.future);
+      final categories = await ref.read(kategoriTiketStreamProvider.future);
+      final file = await SalesExcelExportService().export(
+        filter: filter,
+        transactions: transactions,
+        items: items,
+        categories: categories,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Excel berhasil dibuat: ${file.path}')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal export Excel: $error')));
+    }
   }
 
   String _getPeriodLabel(RekapDateFilter filter) {
@@ -201,6 +229,11 @@ class RekapScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('REKAP PENJUALAN'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Export Excel',
+            onPressed: () => _exportExcel(context, ref, selectedFilter),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: PopupMenuButton<RekapPeriodType>(
