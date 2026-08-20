@@ -10,6 +10,7 @@ import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
 import '../settings/kategori_tiket_screen.dart';
+import '../../core/utils/error_message.dart';
 
 class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
@@ -1275,7 +1276,7 @@ class KasirScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Error: $err'),
+              Text(appErrorMessage(err), textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.refresh(kategoriTiketStreamProvider),
@@ -1319,7 +1320,7 @@ class KasirScreen extends ConsumerWidget {
 
           return sisaKuotaAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, st) => Center(child: Text('Error: $err')),
+            error: (err, st) => Center(child: Text(appErrorMessage(err))),
             data: (sisaKuotaMap) {
               final total = ref.read(cartProvider.notifier).total(kategoris);
 

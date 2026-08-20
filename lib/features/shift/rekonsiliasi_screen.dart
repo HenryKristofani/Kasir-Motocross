@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
 import '../../providers/database_provider.dart';
+import '../../core/utils/error_message.dart';
 import 'riwayat_rekonsiliasi_screen.dart';
 
 class RekonsiliasiScreen extends ConsumerStatefulWidget {
@@ -180,7 +181,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
       ),
       body: rekapAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, st) => Center(child: Text('Error: $err')),
+        error: (err, st) => Center(child: Text(appErrorMessage(err))),
         data: (rekapList) {
           // Hitung total per metode pembayaran dari transaksi hari ini
           final paymentMethods = <String, int>{};

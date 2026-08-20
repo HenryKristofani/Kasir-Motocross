@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/kategori_tiket_provider.dart';
 import '../../providers/database_provider.dart';
+import '../../core/utils/error_message.dart';
 
 class KategoriTiketScreen extends ConsumerWidget {
   const KategoriTiketScreen({super.key});
@@ -227,7 +228,7 @@ class KategoriTiketScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('Error: $err'),
+              Text(appErrorMessage(err), textAlign: TextAlign.center),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => ref.refresh(kategoriTiketStreamProvider),
