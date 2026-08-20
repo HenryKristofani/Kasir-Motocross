@@ -737,6 +737,29 @@ class KasirScreen extends ConsumerWidget {
     return cart.values.fold<int>(0, (sum, entries) => sum + entries.length);
   }
 
+  Widget _buildCartCountBadge(
+    BuildContext context,
+    Map<String, List<CartItemEntry>> cart,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+      decoration: BoxDecoration(
+        color: AppColors.asphalt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
+      child: Text(
+        '${_cartItemCount(cart)}',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   int _calculateCartTotal(
     Map<String, List<CartItemEntry>> cart,
     List<TicketCategoryModel> categories,
@@ -1389,11 +1412,31 @@ class KasirScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: cart.isEmpty
-                    ? null
-                    : () => _choosePicThenPayment(context, ref, kategoris),
-                child: const Text('BAYAR'),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'cart-landscape',
+                      tooltip: 'Buka keranjang',
+                      onPressed: cart.isEmpty
+                          ? null
+                          : () => _showCartBottomSheet(context, ref, kategoris),
+                      backgroundColor: cart.isEmpty
+                          ? Colors.grey
+                          : AppColors.safetyOrange,
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.shopping_cart),
+                    ),
+                    if (cart.isNotEmpty)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: _buildCartCountBadge(context, cart),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1449,11 +1492,31 @@ class KasirScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: cart.isEmpty
-                    ? null
-                    : () => _choosePicThenPayment(context, ref, kategoris),
-                child: const Text('BAYAR'),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: 'cart-portrait',
+                      tooltip: 'Buka keranjang',
+                      onPressed: cart.isEmpty
+                          ? null
+                          : () => _showCartBottomSheet(context, ref, kategoris),
+                      backgroundColor: cart.isEmpty
+                          ? Colors.grey
+                          : AppColors.safetyOrange,
+                      foregroundColor: Colors.white,
+                      child: const Icon(Icons.shopping_cart),
+                    ),
+                    if (cart.isNotEmpty)
+                      Positioned(
+                        right: -4,
+                        top: -4,
+                        child: _buildCartCountBadge(context, cart),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
