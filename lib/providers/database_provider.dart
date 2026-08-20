@@ -72,12 +72,14 @@ final transactionsStreamProvider =
                     total: (row['total'] as num).toInt(),
                     paymentMethod: row['payment_method'] as String,
                     isSynced: true,
-                    createdAt: DateTime.parse(row['created_at'] as String),
+                    createdAt: DateTime.parse(
+                      row['created_at'] as String,
+                    ).toLocal(),
                     isVoided: row['is_voided'] as bool? ?? false,
                     voidReason: row['void_reason'] as String?,
                     voidedAt: row['voided_at'] == null
                         ? null
-                        : DateTime.parse(row['voided_at'] as String),
+                        : DateTime.parse(row['voided_at'] as String).toLocal(),
                   ),
                 )
                 .toList(),
@@ -454,7 +456,9 @@ final shiftReconciliationsStreamProvider =
                     totalFisikTunai: (row['total_fisik_tunai'] as num).toInt(),
                     selisih: (row['selisih'] as num).toInt(),
                     catatan: row['catatan'] as String?,
-                    createdAt: DateTime.parse(row['created_at'] as String),
+                    createdAt: DateTime.parse(
+                      row['created_at'] as String,
+                    ).toLocal(),
                     isSynced: true,
                   ),
                 )
