@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import 'package:drift/drift.dart' hide Column;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
-import '../../data/local/database.dart';
 import '../../providers/database_provider.dart';
-import '../../services/sync/sync_service.dart';
 import 'riwayat_rekonsiliasi_screen.dart';
 
 class RekonsiliasiScreen extends ConsumerStatefulWidget {
@@ -21,10 +19,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
   final _catatanController = TextEditingController();
 
   String _formatRupiah(int amount) {
-    return 'Rp${amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]}.',
-    )}';
+    return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
   void _showSaveDialog(
@@ -96,31 +91,28 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // Simpan ke database
-              final db = ref.read(databaseProvider);
               final deviceId = 'device_1'; // TODO: Get real device ID
               final newId = const Uuid().v4();
-              
-              await db.into(db.shiftReconciliations).insert(
-                ShiftReconciliationsCompanion(
-                  id: Value(newId),
-                  deviceId: Value(deviceId),
-                  totalSistemTunai: Value(totalSistemTunai),
-                  totalFisikTunai: Value(totalFisikTunai),
-                  selisih: Value(selisih),
-                  catatan: _catatanController.text.trim().isEmpty
-                      ? const Value(null)
-                      : Value(_catatanController.text.trim()),
-                  createdAt: Value(DateTime.now()),
-                ),
-              );
-
-              Future.microtask(() => SyncService().triggerLocalMutationSync());
+              await Supabase.instance.client
+                  .from('shift_reconciliations')
+                  .insert({
+                    'id': newId,
+                    'device_id': deviceId,
+                    'total_sistem_tunai': totalSistemTunai,
+                    'total_fisik_tunai': totalFisikTunai,
+                    'selisih': selisih,
+                    'catatan': _catatanController.text.trim().isEmpty
+                        ? null
+                        : _catatanController.text.trim(),
+                    'created_at': DateTime.now().toIso8601String(),
+                  });
 
               if (context.mounted) {
                 Navigator.pop(dialogContext);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Rekonsiliasi berhasil disimpan')),
+                  const SnackBar(
+                    content: Text('Rekonsiliasi berhasil disimpan'),
+                  ),
                 );
                 // Reset form
                 _fisikTunaiController.clear();
@@ -149,10 +141,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
         Text(label),
         Text(
           _formatRupiah(amount),
-          style: TextStyle(
-            fontWeight: fontWeight,
-            color: textColor,
-          ),
+          style: TextStyle(fontWeight: fontWeight, color: textColor),
         ),
       ],
     );
@@ -196,7 +185,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
           // Hitung total per metode pembayaran dari transaksi hari ini
           final paymentMethods = <String, int>{};
           final allTransactions = ref.watch(transactionsStreamProvider);
-          
+
           allTransactions.whenData((transactions) {
             // Filter: hari ini, tidak void
             final now = DateTime.now();
@@ -245,14 +234,15 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                     Text(
                       'Total Keseluruhan Hari Ini',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.charcoal,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: AppColors.charcoal,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       _formatRupiah(totalKeseluruhanHariIni),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: AppColors.dirtTan,
                             fontWeight: FontWeight.w700,
                           ),
@@ -261,8 +251,8 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                     Text(
                       'Termasuk semua metode pembayaran',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.charcoal.withValues(alpha: 0.7),
-                          ),
+                        color: AppColors.charcoal.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
                 ),
@@ -290,7 +280,8 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                           ),
                           Text(
                             _formatRupiah(e.value),
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.safetyOrange,
                                 ),
@@ -353,7 +344,10 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                     ? null
                     : () {
                         final fisikTunai = int.tryParse(
-                          _fisikTunaiController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+                          _fisikTunaiController.text.replaceAll(
+                            RegExp(r'[^0-9]'),
+                            '',
+                          ),
                         );
                         if (fisikTunai == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -401,7 +395,9 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isSesuai ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+        color: isSesuai
+            ? Colors.green.withValues(alpha: 0.1)
+            : Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSesuai ? Colors.green : Colors.red,
@@ -414,16 +410,13 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Selisih',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
+              Text('Selisih', style: Theme.of(context).textTheme.headlineSmall),
               Text(
                 _formatRupiah(selisih.abs()),
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: isSesuai ? Colors.green : Colors.red,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: isSesuai ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),

@@ -60,6 +60,13 @@ class SyncService {
   void init(AppDatabase db, SupabaseClient supabase) {
     _db = db;
     _supabase = supabase;
+    if (_connectivitySub != null) {
+      developer.log(
+        '[SyncService] Already initialized; skipped duplicate listener setup',
+        name: 'sync',
+      );
+      return;
+    }
     _setupConnectivityListener();
     developer.log('[SyncService] Initialized', name: 'sync');
   }
@@ -705,6 +712,7 @@ class SyncService {
   /// Cleanup saat app ditutup
   void dispose() {
     _connectivitySub?.cancel();
+    _connectivitySub = null;
     developer.log('[SyncService] Disposed', name: 'sync');
   }
 }

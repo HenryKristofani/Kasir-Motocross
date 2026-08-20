@@ -2,16 +2,14 @@ import 'package:esc_pos_bluetooth/esc_pos_bluetooth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:drift/drift.dart' hide Column;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/pos_date_picker.dart';
-import '../../core/widgets/sync_status_indicator.dart';
 import '../../core/constants/payment_constants.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/database_provider.dart';
 import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
-import '../../services/sync/sync_service.dart';
 import '../shift/rekonsiliasi_screen.dart';
 
 class RiwayatScreen extends ConsumerWidget {
@@ -42,19 +40,32 @@ class RiwayatScreen extends ConsumerWidget {
     WidgetRef ref,
     Transaction transaction,
   ) async {
-    final db = ref.read(databaseProvider);
-    final items = await (db.select(
-      db.transactionItems,
-    )..where((item) => item.transactionId.equals(transaction.id))).get();
-    final categories = await db.select(db.ticketCategories).get();
+    final client = Supabase.instance.client;
+    final itemRows = await client
+        .from('transaction_items')
+        .select()
+        .eq('transaction_id', transaction.id);
+    final categories = await client.from('ticket_categories').select();
+    final items = itemRows
+        .map(
+          (row) => TransactionItem(
+            id: row['id'] as String,
+            transactionId: row['transaction_id'] as String,
+            categoryId: row['category_id'] as String,
+            qty: (row['qty'] as num).toInt(),
+            subtotal: (row['subtotal'] as num).toInt(),
+            isSynced: true,
+          ),
+        )
+        .toList();
     final categoryMap = {
       for (final item in categories)
-        item.id: TicketCategoryModel(
-          id: item.id,
-          name: item.name,
-          dayType: item.dayType,
-          price: item.price,
-          quota: item.quota,
+        item['id'] as String: TicketCategoryModel(
+          id: item['id'] as String,
+          name: item['name'] as String,
+          dayType: item['day_type'] as String? ?? 'day1',
+          price: (item['price'] as num).toInt(),
+          quota: (item['quota'] as num?)?.toInt(),
         ),
     };
 
@@ -406,7 +417,6 @@ class RiwayatScreen extends ConsumerWidget {
     Transaction transaction,
   ) {
     final reasonController = TextEditingController();
-    final db = ref.read(databaseProvider);
 
     showDialog(
       context: context,
@@ -446,20 +456,15 @@ class RiwayatScreen extends ConsumerWidget {
               ElevatedButton(
                 onPressed: canSubmit
                     ? () async {
-                        // Update transaksi dengan void status
-                        await db
-                            .update(db.transactions)
-                            .replace(
-                              transaction.copyWith(
-                                isVoided: true,
-                                voidReason: Value(reasonController.text.trim()),
-                                voidedAt: Value(DateTime.now()),
-                                isSynced: false,
-                              ),
-                            );
-                        Future.microtask(
-                          () => SyncService().triggerLocalMutationSync(),
-                        );
+                        await Supabase.instance.client
+                            .from('transactions')
+                            .update({
+                              'is_voided': true,
+                              'void_reason': reasonController.text.trim(),
+                              'voided_at': DateTime.now().toIso8601String(),
+                            })
+                            .eq('id', transaction.id)
+                            .eq('is_voided', false);
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -538,7 +543,6 @@ class RiwayatScreen extends ConsumerWidget {
               onPressed: () => _pickDate(context, ref, selectedDate),
             ),
           ),
-          const SyncStatusIndicator(),
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(

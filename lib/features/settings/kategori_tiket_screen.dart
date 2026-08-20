@@ -130,7 +130,7 @@ class KategoriTiketScreen extends ConsumerWidget {
                 child: const Text('Batal'),
               ),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final price = isCrosser
                       ? 0
                       : (int.tryParse(priceController.text) ?? 0);
@@ -143,27 +143,36 @@ class KategoriTiketScreen extends ConsumerWidget {
                     );
                     return;
                   }
-                  if (kategori == null) {
-                    ref
-                        .read(kategoriTiketNotifierProvider.notifier)
-                        .addKategori(
-                          name: selectedName,
-                          dayType: selectedDayType,
-                          price: price,
-                          quota: quota,
-                        );
-                  } else {
-                    ref
-                        .read(kategoriTiketNotifierProvider.notifier)
-                        .updateKategori(
-                          id: kategori.id,
-                          name: selectedName,
-                          dayType: selectedDayType,
-                          price: price,
-                          quota: quota,
-                        );
+                  try {
+                    if (kategori == null) {
+                      await ref
+                          .read(kategoriTiketNotifierProvider.notifier)
+                          .addKategori(
+                            name: selectedName,
+                            dayType: selectedDayType,
+                            price: price,
+                            quota: quota,
+                          );
+                    } else {
+                      await ref
+                          .read(kategoriTiketNotifierProvider.notifier)
+                          .updateKategori(
+                            id: kategori.id,
+                            name: selectedName,
+                            dayType: selectedDayType,
+                            price: price,
+                            quota: quota,
+                          );
+                    }
+
+                    if (!context.mounted) return;
+                    Navigator.pop(dialogContext);
+                  } catch (error) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menyimpan tiket: $error')),
+                    );
                   }
-                  Navigator.pop(dialogContext);
                 },
                 child: Text(kategori == null ? 'Tambah' : 'Simpan'),
               ),

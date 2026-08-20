@@ -89,6 +89,167 @@ CREATE INDEX IF NOT EXISTS idx_shift_reconciliations_device_id ON shift_reconcil
 CREATE INDEX IF NOT EXISTS idx_shift_reconciliations_created_at ON shift_reconciliations(created_at);
 CREATE INDEX IF NOT EXISTS idx_shift_reconciliations_is_synced ON shift_reconciliations(is_synced);
 
+-- Enable Supabase Realtime for data used by the Flutter streams.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'ticket_categories'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.ticket_categories;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'transactions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.transactions;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'transaction_items'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.transaction_items;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'shift_reconciliations'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.shift_reconciliations;
+  END IF;
+END
+$$;
+
+-- Atomic online checkout. This is the only safe stock validation path for
+-- multiple laptops using the same Supabase project.
+CREATE OR REPLACE FUNCTION public.create_ticket_sale(
+  p_transaction_id TEXT,
+  p_local_number TEXT,
+  p_device_id TEXT,
+  p_total INTEGER,
+  p_payment_method TEXT,
+  p_items JSONB
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  item JSONB;
+  category_row RECORD;
+  day1_row RECORD;
+  day2_row RECORD;
+  sold_qty INTEGER;
+  requested_qty INTEGER;
+  effective_remaining INTEGER;
+  day2_sold_qty INTEGER;
+  item_subtotal INTEGER;
+BEGIN
+  IF jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
+    RAISE EXCEPTION 'CART_EMPTY' USING ERRCODE = 'P0001';
+  END IF;
+
+  -- Lock every selected category before calculating stock.
+  FOR item IN SELECT value FROM jsonb_array_elements(p_items)
+  LOOP
+    SELECT * INTO category_row
+    FROM ticket_categories
+    WHERE id = item->>'category_id'
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'CATEGORY_NOT_FOUND:%', item->>'category_id' USING ERRCODE = 'P0001';
+    END IF;
+
+    requested_qty := (item->>'qty')::INTEGER;
+    IF requested_qty IS NULL OR requested_qty <= 0 THEN
+      RAISE EXCEPTION 'INVALID_QTY:%', category_row.name USING ERRCODE = 'P0001';
+    END IF;
+
+    IF category_row.day_type = 'bundling' THEN
+      SELECT * INTO day1_row
+      FROM ticket_categories
+      WHERE name = category_row.name AND day_type = 'day1'
+      FOR UPDATE;
+
+      SELECT * INTO day2_row
+      FROM ticket_categories
+      WHERE name = category_row.name AND day_type = 'day2'
+      FOR UPDATE;
+
+      IF day1_row.id IS NULL OR day2_row.id IS NULL THEN
+        RAISE EXCEPTION 'BUNDLING_PAIR_MISSING:%', category_row.name USING ERRCODE = 'P0001';
+      END IF;
+
+      SELECT COALESCE(SUM(ti.qty) FILTER (WHERE ti.category_id = day1_row.id), 0)
+        + COALESCE(SUM(ti.qty) FILTER (WHERE ti.category_id = category_row.id), 0)
+        INTO sold_qty
+      FROM transaction_items ti
+      JOIN transactions t ON t.id = ti.transaction_id
+      WHERE t.is_voided = false
+        AND ti.category_id IN (day1_row.id, category_row.id);
+
+      SELECT COALESCE(SUM(ti.qty) FILTER (WHERE ti.category_id = day2_row.id), 0)
+        + COALESCE(SUM(ti.qty) FILTER (WHERE ti.category_id = category_row.id), 0)
+        INTO day2_sold_qty
+      FROM transaction_items ti
+      JOIN transactions t ON t.id = ti.transaction_id
+      WHERE t.is_voided = false
+        AND ti.category_id IN (day2_row.id, category_row.id);
+
+      effective_remaining := LEAST(day1_row.quota - sold_qty, day2_row.quota - day2_sold_qty);
+    ELSE
+      SELECT COALESCE(SUM(ti.qty), 0) INTO sold_qty
+      FROM transaction_items ti
+      JOIN transactions t ON t.id = ti.transaction_id
+      WHERE t.is_voided = false
+        AND ti.category_id = category_row.id;
+
+      effective_remaining := COALESCE(category_row.quota, 2147483647) - sold_qty;
+    END IF;
+
+    IF requested_qty > effective_remaining THEN
+      RAISE EXCEPTION 'INSUFFICIENT_QUOTA:%:%:%', category_row.name, effective_remaining, requested_qty USING ERRCODE = 'P0001';
+    END IF;
+  END LOOP;
+
+  INSERT INTO transactions (id, local_number, device_id, total, payment_method, is_voided, created_at)
+  VALUES (p_transaction_id, p_local_number, p_device_id, p_total, p_payment_method, false, NOW());
+
+  FOR item IN SELECT value FROM jsonb_array_elements(p_items)
+  LOOP
+    SELECT price INTO category_row
+    FROM ticket_categories
+    WHERE id = item->>'category_id';
+
+    item_subtotal := COALESCE((item->>'subtotal')::INTEGER, category_row.price * (item->>'qty')::INTEGER);
+
+    INSERT INTO transaction_items (id, transaction_id, category_id, qty, subtotal)
+    VALUES (
+      COALESCE(item->>'id', gen_random_uuid()::TEXT),
+      p_transaction_id,
+      item->>'category_id',
+      (item->>'qty')::INTEGER,
+      item_subtotal
+    );
+  END LOOP;
+
+  RETURN jsonb_build_object('transaction_id', p_transaction_id, 'status', 'created');
+END;
+$$;
+
 -- CATATAN PENTING:
 -- 1. Jalankan semua CREATE TABLE dulu (1-4), jangan langsung jalankan semuanya sekaligus
 -- 2. Setelah table terbuat, baru jalankan CREATE INDEX

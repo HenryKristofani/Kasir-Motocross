@@ -4,15 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/payment_constants.dart';
-import '../../core/widgets/sync_status_indicator.dart';
 import '../../data/models/ticket_category_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/database_provider.dart';
-import '../../providers/kuota_helper.dart';
 import '../../data/local/database.dart';
 import '../../services/printer/printer_service.dart';
 import '../settings/kategori_tiket_screen.dart';
-import '../../services/sync/sync_service.dart';
 
 class KasirScreen extends ConsumerWidget {
   const KasirScreen({super.key});
@@ -330,18 +327,14 @@ class KasirScreen extends ConsumerWidget {
     required BuildContext context,
     required WidgetRef ref,
     required Transaction transaction,
+    required List<TransactionItem> items,
     required List<TicketCategoryModel> kategoris,
     required String paymentMethod,
     int? uangMasuk,
     int? uangKembali,
   }) async {
-    final db = ref.read(databaseProvider);
-    final items = await (db.select(
-      db.transactionItems,
-    )..where((item) => item.transactionId.equals(transaction.id))).get();
-    final categoryRows = await db.select(db.ticketCategories).get();
     final categoryMap = {
-      for (final category in categoryRows)
+      for (final category in kategoris)
         category.id: TicketCategoryModel(
           id: category.id,
           name: category.name,
@@ -396,6 +389,7 @@ class KasirScreen extends ConsumerWidget {
               context: context,
               ref: ref,
               transaction: transaction,
+              items: items,
               kategoris: kategoris,
               paymentMethod: paymentMethod,
               uangMasuk: uangMasuk,
@@ -485,81 +479,56 @@ class KasirScreen extends ConsumerWidget {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
-    final db = ref.read(databaseProvider);
-
-    // Validasi kuota real-time sebelum transaksi
-    final sisaKuotaMap = await calculateSisaKuotaPerKategori(db, kategoris);
-
-    for (final entry in cart.entries) {
-      final cat = kategoris.firstWhere((c) => c.id == entry.key);
-
-      // Bundling memakai sisa efektif minimum Day 1 dan Day 2.
-      if (cat.isBundling && !sisaKuotaMap.containsKey(cat.id)) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Varian ${cat.displayName} membutuhkan pasangan Day 1 dan Day 2.',
-              ),
-            ),
-          );
-        }
-        return;
-      }
-      if (sisaKuotaMap.containsKey(cat.id)) {
-        final sisaKuota = sisaKuotaMap[cat.id] ?? 0;
-        if (entry.value > sisaKuota) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Kuota ${cat.displayName} tidak mencukupi! Sisa: $sisaKuota, diminta: ${entry.value}',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          return; // Batalkan transaksi
-        }
-      }
-    }
-
-    // Validasi lolos, lanjutkan simpan transaksi
     final uuid = const Uuid().v4();
     final total = ref.read(cartProvider.notifier).total(kategoris);
     final now = DateTime.now();
 
-    await db
-        .into(db.transactions)
-        .insert(
-          TransactionsCompanion.insert(
-            id: uuid,
+    final items = cart.entries.map((entry) {
+      final category = kategoris.firstWhere((item) => item.id == entry.key);
+      return TransactionItem(
+        id: const Uuid().v4(),
+        transactionId: uuid,
+        categoryId: category.id,
+        qty: entry.value,
+        subtotal: category.price * entry.value,
+        isSynced: true,
+      );
+    }).toList();
+
+    try {
+      await ref
+          .read(supabaseTicketServiceProvider)
+          .createSale(
+            transactionId: uuid,
             localNumber: 'A-${now.millisecondsSinceEpoch}',
             deviceId: 'device-dev-1',
             total: total,
             paymentMethod: paymentMethod,
-            createdAt: now,
+            items: items
+                .map(
+                  (item) => {
+                    'id': item.id,
+                    'category_id': item.categoryId,
+                    'qty': item.qty,
+                    'subtotal': item.subtotal,
+                  },
+                )
+                .toList(),
+          );
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Checkout ditolak: $error'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
-
-    for (final entry in cart.entries) {
-      final cat = kategoris.firstWhere((c) => c.id == entry.key);
-      await db
-          .into(db.transactionItems)
-          .insert(
-            TransactionItemsCompanion.insert(
-              id: const Uuid().v4(),
-              transactionId: uuid,
-              categoryId: entry.key,
-              qty: entry.value,
-              subtotal: (cat.price * entry.value).toInt(),
-            ),
-          );
+      }
+      return;
     }
 
     ref.read(cartProvider.notifier).clear();
-    Future.microtask(() => SyncService().triggerLocalMutationSync());
-
     final savedTransaction = Transaction(
       id: uuid,
       localNumber: 'A-${now.millisecondsSinceEpoch}',
@@ -591,6 +560,7 @@ class KasirScreen extends ConsumerWidget {
         context: context,
         ref: ref,
         transaction: savedTransaction,
+        items: items,
         kategoris: kategoris,
         paymentMethod: paymentMethod,
         uangMasuk: uangMasuk,
@@ -1376,7 +1346,6 @@ class KasirScreen extends ConsumerWidget {
                       tooltip: 'Pilih Printer',
                       onPressed: () => _showPrinterPickerDialog(context, ref),
                     ),
-                    const SyncStatusIndicator(),
                     IconButton(
                       icon: const Icon(Icons.settings),
                       onPressed: () => Navigator.of(context).push(

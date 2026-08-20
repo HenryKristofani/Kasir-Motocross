@@ -1,38 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
-import '../data/local/database.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/ticket_category_model.dart';
-import '../services/sync/sync_service.dart';
-import 'database_provider.dart';
 
-// Notifier untuk operasi CRUD kategori tiket
 class KategoriTiketNotifier
     extends StateNotifier<AsyncValue<List<TicketCategoryModel>>> {
-  final AppDatabase db;
-
-  KategoriTiketNotifier(this.db) : super(const AsyncValue.loading()) {
+  KategoriTiketNotifier(this.client) : super(const AsyncValue.loading()) {
     _loadCategories();
   }
 
+  final SupabaseClient client;
+
   Future<void> _loadCategories() async {
     try {
-      final rows = await (db.select(
-        db.ticketCategories,
-      )..orderBy([(c) => drift.OrderingTerm.asc(c.name)])).get();
+      final rows = await client
+          .from('ticket_categories')
+          .select()
+          .order('name')
+          .order('day_type');
       final categories = rows
           .map(
             (row) => TicketCategoryModel(
-              id: row.id,
-              name: row.name,
-              dayType: row.dayType,
-              price: row.price,
-              quota: row.quota,
+              id: row['id'] as String,
+              name: row['name'] as String,
+              dayType: row['day_type'] as String? ?? 'day1',
+              price: (row['price'] as num).toInt(),
+              quota: (row['quota'] as num?)?.toInt(),
             ),
           )
           .toList();
       state = AsyncValue.data(categories);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 
@@ -44,22 +42,17 @@ class KategoriTiketNotifier
   }) async {
     try {
       final id = DateTime.now().millisecondsSinceEpoch.toString();
-      await db
-          .into(db.ticketCategories)
-          .insert(
-            TicketCategoriesCompanion.insert(
-              id: id,
-              name: name,
-              dayType: drift.Value(dayType),
-              price: price,
-              quota: drift.Value(quota),
-              isSynced: const drift.Value(false),
-            ),
-          );
-      Future.microtask(() => SyncService().triggerLocalMutationSync());
+      await client.from('ticket_categories').insert({
+        'id': id,
+        'name': name,
+        'day_type': dayType,
+        'price': price,
+        'quota': quota,
+      });
       await _loadCategories();
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     }
   }
 
@@ -71,32 +64,35 @@ class KategoriTiketNotifier
     int? quota,
   }) async {
     try {
-      await (db.update(
-        db.ticketCategories,
-      )..where((c) => c.id.equals(id))).write(
-        TicketCategoriesCompanion(
-          name: drift.Value(name),
-          dayType: drift.Value(dayType),
-          price: drift.Value(price),
-          quota: drift.Value(quota),
-          isSynced: const drift.Value(false),
-        ),
-      );
-      Future.microtask(() => SyncService().triggerLocalMutationSync());
+      final updatedRows = await client
+          .from('ticket_categories')
+          .update({
+            'name': name,
+            'day_type': dayType,
+            'price': price,
+            'quota': quota,
+          })
+          .eq('id', id)
+          .select('id');
+      if (updatedRows.isEmpty) {
+        throw StateError(
+          'Tiket tidak diperbarui. Periksa ID tiket dan izin UPDATE Supabase (RLS).',
+        );
+      }
       await _loadCategories();
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     }
   }
 
   Future<void> deleteKategori(String id) async {
     try {
-      await (db.delete(
-        db.ticketCategories,
-      )..where((c) => c.id.equals(id))).go();
+      await client.from('ticket_categories').delete().eq('id', id);
       await _loadCategories();
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     }
   }
 }
@@ -106,6 +102,5 @@ final kategoriTiketNotifierProvider =
       KategoriTiketNotifier,
       AsyncValue<List<TicketCategoryModel>>
     >((ref) {
-      final db = ref.watch(databaseProvider);
-      return KategoriTiketNotifier(db);
+      return KategoriTiketNotifier(Supabase.instance.client);
     });

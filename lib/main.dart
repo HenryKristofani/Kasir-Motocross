@@ -7,9 +7,7 @@ import 'features/riwayat/riwayat_screen.dart';
 import 'features/settings/kategori_tiket_screen.dart';
 import 'features/rekap/rekap_screen.dart';
 import 'core/theme/app_theme.dart';
-import 'providers/init_provider.dart';
 import 'providers/database_provider.dart';
-import 'services/sync/sync_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +16,8 @@ Future<void> main() async {
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://qwgkqgniqmkbqoktkkwq.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2txZ25pcW1rYnFva3Rra3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjA4NzQsImV4cCI6MjEwMjMzNjg3NH0.E7sgh8Bi1OHJZWvRU6GetSAyHw9VJWEOKZrw20ojwcs',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3Z2txZ25pcW1rYnFva3Rra3dxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3NjA4NzQsImV4cCI6MjEwMjMzNjg3NH0.E7sgh8Bi1OHJZWvRU6GetSAyHw9VJWEOKZrw20ojwcs',
   );
 
   runApp(const ProviderScope(child: MyApp()));
@@ -32,7 +31,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'POS Motocross',
       theme: AppTheme.light,
-      scaffoldMessengerKey: SyncService.scaffoldMessengerKey,
       home: const RootScreen(),
     );
   }
@@ -58,23 +56,13 @@ class _RootScreenState extends ConsumerState<RootScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize seed data dan sync service saat app startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(initKategoriTiketProvider);
-
-      // Initialize sync service
-      final db = ref.read(databaseProvider);
-      final supabase = Supabase.instance.client;
-      SyncService().init(db, supabase);
-
-      // Trigger initial sync attempt
-      SyncService().syncPending();
+      ref.read(databaseProvider);
     });
   }
 
   @override
   void dispose() {
-    SyncService().dispose();
     super.dispose();
   }
 
@@ -86,7 +74,10 @@ class _RootScreenState extends ConsumerState<RootScreen> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.point_of_sale), label: 'Kasir'),
+          NavigationDestination(
+            icon: Icon(Icons.point_of_sale),
+            label: 'Kasir',
+          ),
           NavigationDestination(icon: Icon(Icons.history), label: 'Riwayat'),
           NavigationDestination(icon: Icon(Icons.settings), label: 'Kategori'),
           NavigationDestination(icon: Icon(Icons.assessment), label: 'Rekap'),
