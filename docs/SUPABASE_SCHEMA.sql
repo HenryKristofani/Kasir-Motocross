@@ -111,6 +111,13 @@ ALTER TABLE transaction_items
 ALTER TABLE transactions
   ADD COLUMN IF NOT EXISTS pic_name TEXT;
 
+-- Default invitation paddock tickets.
+INSERT INTO ticket_categories (id, name, day_type, price, quota)
+VALUES
+  ('paddock-undangan-day1', 'Paddock Undangan', 'day1', 0, 300),
+  ('paddock-undangan-day2', 'Paddock Undangan', 'day2', 0, 300)
+ON CONFLICT (id) DO NOTHING;
+
 -- Create indexes untuk performa query
 CREATE INDEX IF NOT EXISTS idx_transactions_device_id ON transactions(device_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);

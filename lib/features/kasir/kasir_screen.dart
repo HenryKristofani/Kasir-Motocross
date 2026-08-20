@@ -506,6 +506,7 @@ class KasirScreen extends ConsumerWidget {
         SnackBar(
           content: Text('Transaksi tersimpan dan struk berhasil dicetak'),
           backgroundColor: AppColors.safetyOrange,
+          showCloseIcon: true,
         ),
       );
       return;
@@ -528,6 +529,7 @@ class KasirScreen extends ConsumerWidget {
         content: Text(message),
         backgroundColor: Colors.orange[800],
         duration: const Duration(seconds: 4),
+        showCloseIcon: true,
         action: SnackBarAction(
           label: 'Coba print lagi',
           onPressed: () async {
@@ -563,6 +565,7 @@ class KasirScreen extends ConsumerWidget {
           content: Text(
             'Tidak ada printer Bluetooth yang terdeteksi. Pastikan printer telah dipasangkan.',
           ),
+          showCloseIcon: true,
         ),
       );
       return;
@@ -595,6 +598,7 @@ class KasirScreen extends ConsumerWidget {
                             'Printer default: ${printer.name ?? 'Bluetooth Printer'}',
                           ),
                           backgroundColor: AppColors.safetyOrange,
+                          showCloseIcon: true,
                         ),
                       );
                     }
@@ -679,6 +683,7 @@ class KasirScreen extends ConsumerWidget {
             content: Text('Checkout ditolak: $error'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
+            showCloseIcon: true,
           ),
         );
       }
@@ -708,6 +713,7 @@ class KasirScreen extends ConsumerWidget {
             content: Text(
               'Transaksi tersimpan — Total ${_formatRupiah(total)}',
             ),
+            showCloseIcon: true,
           ),
         );
       }

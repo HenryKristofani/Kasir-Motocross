@@ -66,6 +66,20 @@ const seedTicketCategories = <TicketCategoryModel>[
     price: 0,
   ),
   TicketCategoryModel(
+    id: 'paddock-undangan-day1',
+    name: 'Paddock Undangan',
+    dayType: 'day1',
+    price: 0,
+    quota: 300,
+  ),
+  TicketCategoryModel(
+    id: 'paddock-undangan-day2',
+    name: 'Paddock Undangan',
+    dayType: 'day2',
+    price: 0,
+    quota: 300,
+  ),
+  TicketCategoryModel(
     id: 'umum-day1',
     name: 'Umum',
     dayType: 'day1',
@@ -126,17 +140,30 @@ final initKategoriTiketProvider = FutureProvider<void>((ref) async {
   final db = ref.watch(databaseProvider);
 
   final existingRows = await db.select(db.ticketCategories).get();
-  final seedIds = seedTicketCategories.map((category) => category.id).toSet();
   final existingIds = existingRows.map((row) => row.id).toSet();
   final isLegacySeed =
       existingRows.isNotEmpty &&
       existingRows.every(
         (row) => {'MX1', 'MX2', 'Open Class', 'Penonton'}.contains(row.name),
       );
-  final isIncompleteSeed =
-      existingIds.length != seedIds.length || !existingIds.containsAll(seedIds);
-
-  if (existingRows.isEmpty || isLegacySeed || isIncompleteSeed) {
+  if (existingRows.isEmpty || isLegacySeed) {
     await reseedTicketCategories(db);
+  } else {
+    for (final category in seedTicketCategories) {
+      if (existingIds.contains(category.id)) continue;
+      await db
+          .into(db.ticketCategories)
+          .insert(
+            TicketCategoriesCompanion.insert(
+              id: category.id,
+              name: category.name,
+              dayType: drift.Value(category.dayType),
+              price: category.price,
+              quota: drift.Value(category.quota),
+              isSynced: const drift.Value(false),
+            ),
+          );
+    }
   }
+
 });

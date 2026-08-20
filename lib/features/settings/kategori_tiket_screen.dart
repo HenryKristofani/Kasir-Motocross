@@ -19,7 +19,14 @@ class KategoriTiketScreen extends ConsumerWidget {
     WidgetRef ref, {
     TicketCategoryModel? kategori,
   }) {
-    const parentNames = ['VVIP', 'VIP', 'Paddock', 'Umum', 'Crosser'];
+    const parentNames = [
+      'VVIP',
+      'VIP',
+      'Paddock',
+      'Paddock Undangan',
+      'Umum',
+      'Crosser',
+    ];
     final nameController = TextEditingController(text: kategori?.name ?? '');
     final priceController = TextEditingController(
       text: kategori?.price.toString() ?? '',
