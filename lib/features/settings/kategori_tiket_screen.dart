@@ -250,25 +250,40 @@ class KategoriTiketScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (kategoriList) => kategoriList.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.category_outlined,
-                      size: 64,
-                      color: AppColors.asphalt.withValues(alpha: 0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Belum ada kategori tiket',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                  ],
-                ),
-              )
-            : _buildKategoriList(context, ref, kategoriList),
+        data: (kategoriList) {
+          final sortedCategories = [...kategoriList]
+            ..sort((a, b) {
+              final byName = a.name.toLowerCase().compareTo(
+                b.name.toLowerCase(),
+              );
+              if (byName != 0) return byName;
+
+              const dayOrder = {'day1': 0, 'day2': 1, 'bundling': 2};
+              return (dayOrder[a.dayType] ?? 99).compareTo(
+                dayOrder[b.dayType] ?? 99,
+              );
+            });
+
+          return sortedCategories.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.category_outlined,
+                        size: 64,
+                        color: AppColors.asphalt.withValues(alpha: 0.3),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Belum ada kategori tiket',
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                )
+              : _buildKategoriList(context, ref, sortedCategories);
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showKategoriDialog(context, ref),
