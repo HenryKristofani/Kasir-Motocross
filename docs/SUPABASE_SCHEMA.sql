@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   category_id TEXT NOT NULL REFERENCES ticket_categories(id),
   qty INTEGER NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
-  price_option TEXT NOT NULL DEFAULT 'full' CHECK (price_option IN ('full', 'half', 'free')),
+  price_option TEXT NOT NULL DEFAULT 'full' CHECK (price_option IN ('full', 'half', 'free', 'manual')),
   is_synced BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -106,7 +106,7 @@ ALTER TABLE transaction_items
 
 ALTER TABLE transaction_items
   ADD CONSTRAINT transaction_items_price_option_check
-  CHECK (price_option IN ('full', 'half', 'free'));
+  CHECK (price_option IN ('full', 'half', 'free', 'manual'));
 
 ALTER TABLE transactions
   ADD COLUMN IF NOT EXISTS pic_name TEXT;
@@ -277,13 +277,19 @@ BEGIN
     WHERE id = item->>'category_id';
 
     item_price_option := COALESCE(item->>'price_option', 'full');
-    IF item_price_option NOT IN ('full', 'half', 'free') THEN
+    IF item_price_option NOT IN ('full', 'half', 'free', 'manual') THEN
       RAISE EXCEPTION 'INVALID_PRICE_OPTION:%', item_price_option USING ERRCODE = 'P0001';
+    END IF;
+
+    IF item_price_option = 'manual'
+       AND ((item->>'subtotal') IS NULL OR (item->>'subtotal')::INTEGER < 0) THEN
+      RAISE EXCEPTION 'INVALID_MANUAL_PRICE' USING ERRCODE = 'P0001';
     END IF;
 
     item_subtotal := CASE item_price_option
       WHEN 'half' THEN (category_row.price::INTEGER * (item->>'qty')::INTEGER) / 2
       WHEN 'free' THEN 0
+      WHEN 'manual' THEN COALESCE((item->>'subtotal')::INTEGER, 0)
       ELSE category_row.price::INTEGER * (item->>'qty')::INTEGER
     END;
 

@@ -21,6 +21,67 @@ class KasirScreen extends ConsumerWidget {
     return 'Rp${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
+  Future<void> _setCartPriceOption(
+    BuildContext context,
+    WidgetRef ref,
+    String categoryId,
+    CartItemEntry cartItem,
+    CartPriceOption option,
+  ) async {
+    if (option != CartPriceOption.manual) {
+      ref
+          .read(cartProvider.notifier)
+          .setOption(categoryId, cartItem.id, option);
+      return;
+    }
+
+    final controller = TextEditingController(
+      text: cartItem.manualPrice?.toString() ?? '',
+    );
+    final manualPrice = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Harga Manual'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nominal per tiket',
+            prefixText: 'Rp ',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              if (value != null && value >= 0) {
+                Navigator.pop(dialogContext, value);
+              }
+            },
+            child: const Text('Gunakan'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (manualPrice != null) {
+      ref
+          .read(cartProvider.notifier)
+          .setOption(
+            categoryId,
+            cartItem.id,
+            CartPriceOption.manual,
+            manualPrice: manualPrice,
+          );
+    }
+  }
+
   Future<void> _choosePicThenPayment(
     BuildContext context,
     WidgetRef ref,
@@ -150,7 +211,11 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
     String? picName,
   ) {
-    final total = ref.read(cartProvider.notifier).total(kategoris);
+    final total = _calculateCartTotal(
+      ref.read(cartProvider),
+      kategoris,
+      ref.read(cartProvider.notifier),
+    );
     final uangMasukController = TextEditingController();
 
     showDialog(
@@ -299,7 +364,11 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
     String? picName,
   ) {
-    final total = ref.read(cartProvider.notifier).total(kategoris);
+    final total = _calculateCartTotal(
+      ref.read(cartProvider),
+      kategoris,
+      ref.read(cartProvider.notifier),
+    );
 
     showDialog(
       context: context,
@@ -574,6 +643,7 @@ class KasirScreen extends ConsumerWidget {
                 .itemPrice(
                   kategoris.firstWhere((item) => item.id == entry.key),
                   cartItem.option,
+                  manualPrice: cartItem.manualPrice,
                 ),
             priceOption: cartItem.option.value,
             isSynced: true,
@@ -661,6 +731,27 @@ class KasirScreen extends ConsumerWidget {
     return cart.values.fold<int>(0, (sum, entries) => sum + entries.length);
   }
 
+  int _calculateCartTotal(
+    Map<String, List<CartItemEntry>> cart,
+    List<TicketCategoryModel> categories,
+    CartNotifier notifier,
+  ) {
+    return cart.entries.fold<int>(0, (total, entry) {
+      final category = categories.firstWhere((item) => item.id == entry.key);
+      return total +
+          entry.value.fold<int>(
+            0,
+            (subtotal, item) =>
+                subtotal +
+                notifier.itemPrice(
+                  category,
+                  item.option,
+                  manualPrice: item.manualPrice,
+                ),
+          );
+    });
+  }
+
   void _showCartBottomSheet(
     BuildContext context,
     WidgetRef ref,
@@ -680,7 +771,11 @@ class KasirScreen extends ConsumerWidget {
         return Consumer(
           builder: (context, ref, _) {
             final cart = ref.watch(cartProvider);
-            final total = ref.read(cartProvider.notifier).total(kategoris);
+            final total = _calculateCartTotal(
+              cart,
+              kategoris,
+              ref.read(cartProvider.notifier),
+            );
 
             Future<void> continueToPayment() async {
               debugPrint('=== Lanjut ke Pembayaran pressed in cart sheet');
@@ -796,7 +891,11 @@ class KasirScreen extends ConsumerWidget {
                             );
                             final subtotal = ref
                                 .read(cartProvider.notifier)
-                                .itemPrice(category, cartItem.option);
+                                .itemPrice(
+                                  category,
+                                  cartItem.option,
+                                  manualPrice: cartItem.manualPrice,
+                                );
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -816,7 +915,7 @@ class KasirScreen extends ConsumerWidget {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          '${_formatRupiah(category.price)} / pcs - ${cartItem.option.label}',
+                                          '${_formatRupiah(subtotal)} / pcs - ${cartItem.option.label}',
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodyMedium
@@ -853,13 +952,13 @@ class KasirScreen extends ConsumerWidget {
                                             .toList(),
                                         onChanged: (option) {
                                           if (option != null) {
-                                            ref
-                                                .read(cartProvider.notifier)
-                                                .setOption(
-                                                  categoryId,
-                                                  cartItem.id,
-                                                  option,
-                                                );
+                                            _setCartPriceOption(
+                                              context,
+                                              ref,
+                                              categoryId,
+                                              cartItem,
+                                              option,
+                                            );
                                           }
                                         },
                                       ),
@@ -1191,6 +1290,11 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,
   ) {
+    final displayedTotal = _calculateCartTotal(
+      cart,
+      kategoris,
+      ref.read(cartProvider.notifier),
+    );
     return Container(
       width: 320,
       padding: const EdgeInsets.all(20),
@@ -1231,7 +1335,11 @@ class KasirScreen extends ConsumerWidget {
                         return e.value.map((cartItem) {
                           final itemTotal = ref
                               .read(cartProvider.notifier)
-                              .itemPrice(cat, cartItem.option);
+                              .itemPrice(
+                                cat,
+                                cartItem.option,
+                                manualPrice: cartItem.manualPrice,
+                              );
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Row(
@@ -1265,7 +1373,7 @@ class KasirScreen extends ConsumerWidget {
               children: [
                 Text('Total', style: Theme.of(context).textTheme.bodyLarge),
                 Text(
-                  _formatRupiah(total),
+                  _formatRupiah(displayedTotal),
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     color: AppColors.safetyOrange,
                   ),
@@ -1297,6 +1405,11 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,
   ) {
+    final displayedTotal = _calculateCartTotal(
+      cart,
+      kategoris,
+      ref.read(cartProvider.notifier),
+    );
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1320,7 +1433,7 @@ class KasirScreen extends ConsumerWidget {
               children: [
                 Text('Total', style: Theme.of(context).textTheme.bodyLarge),
                 Text(
-                  _formatRupiah(total),
+                  _formatRupiah(displayedTotal),
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     color: AppColors.safetyOrange,
                   ),

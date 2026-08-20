@@ -188,14 +188,16 @@ final transactionDetailItemsProvider = FutureProvider.autoDispose
                 price: (category['price'] as num).toInt(),
                 quota: (category['quota'] as num?)?.toInt(),
               );
-        final unitPrice = categoryModel?.price ?? 0;
+        final qty = (row['qty'] as num).toInt();
+        final subtotal = (row['subtotal'] as num).toInt();
+        final unitPrice = qty > 0 ? subtotal ~/ qty : 0;
 
         return TransactionDetailItem(
           categoryId: row['category_id'] as String,
           categoryName: categoryModel?.displayName ?? 'Kategori tidak tersedia',
-          qty: (row['qty'] as num).toInt(),
+          qty: qty,
           unitPrice: unitPrice,
-          subtotal: (row['subtotal'] as num).toInt(),
+          subtotal: subtotal,
           priceOption: row['price_option'] as String? ?? 'full',
         );
       }).toList();
@@ -405,11 +407,23 @@ final rekapPenjualanHariIniProvider =
       );
     });
 
+final transactionTotalsFromItemsProvider =
+    FutureProvider.autoDispose<Map<String, int>>((ref) async {
+      final items = await ref.watch(transactionItemsStreamProvider.future);
+      final totals = <String, int>{};
+      for (final item in items) {
+        totals[item.transactionId] =
+            (totals[item.transactionId] ?? 0) + item.subtotal;
+      }
+      return totals;
+    });
+
 // Provider untuk total sistem tunai hari ini (untuk rekonsiliasi kas)
 final totalSistemTunaiHariIniProvider = FutureProvider.autoDispose<int>((
   ref,
 ) async {
   final transactions = await ref.watch(transactionsStreamProvider.future);
+  final itemTotals = await ref.watch(transactionTotalsFromItemsProvider.future);
   final now = DateTime.now();
   final start = DateTime(now.year, now.month, now.day);
   final end = start.add(const Duration(days: 1));
@@ -421,7 +435,11 @@ final totalSistemTunaiHariIniProvider = FutureProvider.autoDispose<int>((
             !transaction.createdAt.isBefore(start) &&
             transaction.createdAt.isBefore(end),
       )
-      .fold<int>(0, (sum, transaction) => sum + transaction.total);
+      .fold<int>(
+        0,
+        (sum, transaction) =>
+            sum + (itemTotals[transaction.id] ?? transaction.total),
+      );
 });
 
 // Provider untuk total keseluruhan hari ini (semua metode pembayaran)
@@ -430,6 +448,7 @@ final totalKeseluruhanHariIniProvider = FutureProvider.autoDispose<int>((
   ref,
 ) async {
   final transactions = await ref.watch(transactionsStreamProvider.future);
+  final itemTotals = await ref.watch(transactionTotalsFromItemsProvider.future);
   final now = DateTime.now();
   final start = DateTime(now.year, now.month, now.day);
   final end = start.add(const Duration(days: 1));
@@ -440,7 +459,11 @@ final totalKeseluruhanHariIniProvider = FutureProvider.autoDispose<int>((
             !transaction.createdAt.isBefore(start) &&
             transaction.createdAt.isBefore(end),
       )
-      .fold<int>(0, (sum, transaction) => sum + transaction.total);
+      .fold<int>(
+        0,
+        (sum, transaction) =>
+            sum + (itemTotals[transaction.id] ?? transaction.total),
+      );
 });
 
 // Stream semua shift reconciliations, urut dari terbaru

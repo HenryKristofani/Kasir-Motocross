@@ -186,6 +186,12 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
           // Hitung total per metode pembayaran dari transaksi hari ini
           final paymentMethods = <String, int>{};
           final allTransactions = ref.watch(transactionsStreamProvider);
+          final itemTotals = ref
+              .watch(transactionTotalsFromItemsProvider)
+              .maybeWhen(
+                data: (value) => value,
+                orElse: () => const <String, int>{},
+              );
 
           allTransactions.whenData((transactions) {
             // Filter: hari ini, tidak void
@@ -198,7 +204,8 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                   t.createdAt.isAfter(startOfDay) &&
                   t.createdAt.isBefore(endOfDay)) {
                 paymentMethods[t.paymentMethod] =
-                    (paymentMethods[t.paymentMethod] ?? 0) + t.total;
+                    (paymentMethods[t.paymentMethod] ?? 0) +
+                    (itemTotals[t.id] ?? t.total);
               }
             }
           });

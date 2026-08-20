@@ -294,7 +294,7 @@ class RiwayatScreen extends ConsumerWidget {
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
-                                                '${item.qty} x ${_formatRupiah(item.unitPrice)} (${item.priceOption})',
+                                                '${item.qty} x ${_formatRupiah(item.unitPrice)} (${_priceOptionLabel(item.priceOption)})',
                                                 style: Theme.of(context)
                                                     .textTheme
                                                     .bodyMedium
@@ -415,6 +415,15 @@ class RiwayatScreen extends ConsumerWidget {
     );
   }
 
+  String _priceOptionLabel(String option) {
+    return switch (option) {
+      'half' => '50%',
+      'free' => 'Free',
+      'manual' => 'Manual',
+      _ => '100%',
+    };
+  }
+
   void _showVoidDialog(
     BuildContext context,
     WidgetRef ref,
@@ -495,16 +504,33 @@ class RiwayatScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(selectedRiwayatDateProvider);
+    final transactionItems = ref.watch(transactionItemsStreamProvider);
     final filteredTransactions = ref.watch(
       filteredTransactionsByDateProvider(selectedDate),
     );
+
+    final itemTotalsByTransactionId = transactionItems.maybeWhen(
+      data: (items) {
+        final totals = <String, int>{};
+        for (final item in items) {
+          totals[item.transactionId] =
+              (totals[item.transactionId] ?? 0) + item.subtotal;
+        }
+        return totals;
+      },
+      orElse: () => const <String, int>{},
+    );
+
+    int displayedTotal(Transaction transaction) {
+      return itemTotalsByTransactionId[transaction.id] ?? transaction.total;
+    }
 
     final activeTransactions = filteredTransactions
         .where((t) => !t.isVoided)
         .toList();
     final totalTanggal = activeTransactions.fold<int>(
       0,
-      (sum, t) => sum + t.total,
+      (sum, t) => sum + displayedTotal(t),
     );
     final voidedCount = filteredTransactions.length - activeTransactions.length;
 
@@ -755,7 +781,7 @@ class RiwayatScreen extends ConsumerWidget {
                                         ),
                                       ),
                                     Text(
-                                      _formatRupiah(t.total),
+                                      _formatRupiah(displayedTotal(t)),
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         decoration: isVoided
