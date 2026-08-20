@@ -40,6 +40,7 @@ class TransactionItems extends Table {
   TextColumn get categoryId => text()();
   IntColumn get qty => integer()();
   IntColumn get subtotal => integer()();
+  TextColumn get priceOption => text().withDefault(const Constant('full'))();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
@@ -72,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -98,6 +99,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (oldVersion < 5) {
           await m.addColumn(ticketCategories, ticketCategories.dayType);
+        }
+        if (oldVersion < 6) {
+          await m.addColumn(transactionItems, transactionItems.priceOption);
         }
       },
     );

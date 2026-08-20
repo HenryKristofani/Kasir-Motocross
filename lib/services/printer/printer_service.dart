@@ -206,7 +206,12 @@ class PrinterService {
 
     for (final item in items) {
       final category = categories[item.categoryId];
-      final itemName = category?.displayName ?? 'Tiket';
+      final optionLabel = switch (item.priceOption) {
+        'half' => '50%',
+        'free' => 'Free',
+        _ => '100%',
+      };
+      final itemName = '${category?.displayName ?? 'Tiket'} ($optionLabel)';
       final itemSubtotal = item.subtotal;
 
       buffer += generator.row([

@@ -469,6 +469,7 @@ class SyncService {
             'category_id': item.categoryId,
             'qty': item.qty,
             'subtotal': item.subtotal,
+            'price_option': item.priceOption,
           });
 
           syncedIds.add(item.id);

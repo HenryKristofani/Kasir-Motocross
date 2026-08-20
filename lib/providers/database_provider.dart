@@ -129,6 +129,7 @@ class TransactionDetailItem {
     required this.qty,
     required this.unitPrice,
     required this.subtotal,
+    required this.priceOption,
   });
 
   final String categoryId;
@@ -136,6 +137,7 @@ class TransactionDetailItem {
   final int qty;
   final int unitPrice;
   final int subtotal;
+  final String priceOption;
 }
 
 // Stream semua transaction items (untuk menghitung sisa kuota)
@@ -153,6 +155,7 @@ final transactionItemsStreamProvider =
                     categoryId: row['category_id'] as String,
                     qty: (row['qty'] as num).toInt(),
                     subtotal: (row['subtotal'] as num).toInt(),
+                    priceOption: row['price_option'] as String? ?? 'full',
                     isSynced: true,
                   ),
                 )
@@ -192,6 +195,7 @@ final transactionDetailItemsProvider = FutureProvider.autoDispose
           qty: (row['qty'] as num).toInt(),
           unitPrice: unitPrice,
           subtotal: (row['subtotal'] as num).toInt(),
+          priceOption: row['price_option'] as String? ?? 'full',
         );
       }).toList();
     });

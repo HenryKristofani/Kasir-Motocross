@@ -483,17 +483,24 @@ class KasirScreen extends ConsumerWidget {
     final total = ref.read(cartProvider.notifier).total(kategoris);
     final now = DateTime.now();
 
-    final items = cart.entries.map((entry) {
-      final category = kategoris.firstWhere((item) => item.id == entry.key);
-      return TransactionItem(
-        id: const Uuid().v4(),
-        transactionId: uuid,
-        categoryId: category.id,
-        qty: entry.value,
-        subtotal: category.price * entry.value,
-        isSynced: true,
-      );
-    }).toList();
+    final items = [
+      for (final entry in cart.entries)
+        for (final cartItem in entry.value)
+          TransactionItem(
+            id: const Uuid().v4(),
+            transactionId: uuid,
+            categoryId: entry.key,
+            qty: 1,
+            subtotal: ref
+                .read(cartProvider.notifier)
+                .itemPrice(
+                  kategoris.firstWhere((item) => item.id == entry.key),
+                  cartItem.option,
+                ),
+            priceOption: cartItem.option.value,
+            isSynced: true,
+          ),
+    ];
 
     try {
       await ref
@@ -511,6 +518,7 @@ class KasirScreen extends ConsumerWidget {
                     'category_id': item.categoryId,
                     'qty': item.qty,
                     'subtotal': item.subtotal,
+                    'price_option': item.priceOption,
                   },
                 )
                 .toList(),
@@ -569,8 +577,8 @@ class KasirScreen extends ConsumerWidget {
     }
   }
 
-  int _cartItemCount(Map<String, int> cart) {
-    return cart.values.fold<int>(0, (sum, qty) => sum + qty);
+  int _cartItemCount(Map<String, List<CartItemEntry>> cart) {
+    return cart.values.fold<int>(0, (sum, entries) => sum + entries.length);
   }
 
   void _showCartBottomSheet(
@@ -694,15 +702,21 @@ class KasirScreen extends ConsumerWidget {
                             horizontal: 16,
                             vertical: 12,
                           ),
-                          itemCount: cart.length,
+                          itemCount: _cartItemCount(cart),
                           separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
-                            final entry = cart.entries.toList()[index];
+                            final flatItems = [
+                              for (final entry in cart.entries)
+                                for (final item in entry.value)
+                                  (entry.key, item),
+                            ];
+                            final (categoryId, cartItem) = flatItems[index];
                             final category = kategoris.firstWhere(
-                              (item) => item.id == entry.key,
+                              (item) => item.id == categoryId,
                             );
-                            final qty = entry.value;
-                            final subtotal = category.price * qty;
+                            final subtotal = ref
+                                .read(cartProvider.notifier)
+                                .itemPrice(category, cartItem.option);
 
                             return Padding(
                               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -715,14 +729,14 @@ class KasirScreen extends ConsumerWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          category.name,
+                                          category.displayName,
                                           style: Theme.of(
                                             context,
                                           ).textTheme.titleMedium,
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          '${_formatRupiah(category.price)} / pcs',
+                                          '${_formatRupiah(category.price)} / pcs - ${cartItem.option.label}',
                                           style: Theme.of(context)
                                               .textTheme
                                               .bodyMedium
@@ -747,11 +761,33 @@ class KasirScreen extends ConsumerWidget {
                                   ),
                                   Row(
                                     children: [
+                                      DropdownButton<CartPriceOption>(
+                                        value: cartItem.option,
+                                        items: CartPriceOption.values
+                                            .map(
+                                              (option) => DropdownMenuItem(
+                                                value: option,
+                                                child: Text(option.label),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (option) {
+                                          if (option != null) {
+                                            ref
+                                                .read(cartProvider.notifier)
+                                                .setOption(
+                                                  categoryId,
+                                                  cartItem.id,
+                                                  option,
+                                                );
+                                          }
+                                        },
+                                      ),
                                       IconButton(
                                         tooltip: 'Kurangi qty',
                                         onPressed: () => ref
                                             .read(cartProvider.notifier)
-                                            .decrement(category.id),
+                                            .decrement(categoryId),
                                         icon: const Icon(
                                           Icons.remove_circle_outline,
                                         ),
@@ -760,7 +796,7 @@ class KasirScreen extends ConsumerWidget {
                                       SizedBox(
                                         width: 28,
                                         child: Text(
-                                          '$qty',
+                                          '1',
                                           textAlign: TextAlign.center,
                                           style: Theme.of(
                                             context,
@@ -771,7 +807,7 @@ class KasirScreen extends ConsumerWidget {
                                         tooltip: 'Tambah qty',
                                         onPressed: () => ref
                                             .read(cartProvider.notifier)
-                                            .increment(category.id),
+                                            .increment(categoryId),
                                         icon: const Icon(
                                           Icons.add_circle_outline,
                                         ),
@@ -781,7 +817,7 @@ class KasirScreen extends ConsumerWidget {
                                         tooltip: 'Hapus item',
                                         onPressed: () => ref
                                             .read(cartProvider.notifier)
-                                            .remove(category.id),
+                                            .remove(categoryId),
                                         icon: const Icon(Icons.delete_outline),
                                         color: Colors.red,
                                       ),
@@ -851,7 +887,7 @@ class KasirScreen extends ConsumerWidget {
   Widget _buildCategoryList(
     BuildContext context,
     WidgetRef ref,
-    Map<String, int> cart,
+    Map<String, List<CartItemEntry>> cart,
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,
   ) {
@@ -883,7 +919,7 @@ class KasirScreen extends ConsumerWidget {
         }
 
         final cat = row as TicketCategoryModel;
-        final qty = cart[cat.id] ?? 0;
+        final qty = cart[cat.id]?.length ?? 0;
         final selected = qty > 0;
         final sisaKuota = sisaKuotaMap[cat.id];
         final hasQuota = sisaKuotaMap.containsKey(cat.id);
@@ -1070,7 +1106,7 @@ class KasirScreen extends ConsumerWidget {
   Widget _buildCartSummaryPanel(
     BuildContext context,
     WidgetRef ref,
-    Map<String, int> cart,
+    Map<String, List<CartItemEntry>> cart,
     int total,
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,
@@ -1110,25 +1146,32 @@ class KasirScreen extends ConsumerWidget {
                       ),
                     )
                   : ListView(
-                      children: cart.entries.map((e) {
+                      children: cart.entries.expand((e) {
                         final cat = kategoris.firstWhere((c) => c.id == e.key);
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '${cat.displayName} x${e.value}',
+                        return e.value.map((cartItem) {
+                          final itemTotal = ref
+                              .read(cartProvider.notifier)
+                              .itemPrice(cat, cartItem.option);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${cat.displayName} (${cartItem.option.label})',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge,
+                                  ),
+                                ),
+                                Text(
+                                  _formatRupiah(itemTotal),
                                   style: Theme.of(context).textTheme.bodyLarge,
                                 ),
-                              ),
-                              Text(
-                                _formatRupiah(cat.price * e.value),
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                            ],
-                          ),
-                        );
+                              ],
+                            ),
+                          );
+                        });
                       }).toList(),
                     ),
             ),
@@ -1169,7 +1212,7 @@ class KasirScreen extends ConsumerWidget {
   Widget _buildCartSummaryBottomBar(
     BuildContext context,
     WidgetRef ref,
-    Map<String, int> cart,
+    Map<String, List<CartItemEntry>> cart,
     int total,
     List<TicketCategoryModel> kategoris,
     Map<String, int> sisaKuotaMap,

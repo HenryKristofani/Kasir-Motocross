@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS transaction_items (
   category_id TEXT NOT NULL REFERENCES ticket_categories(id),
   qty INTEGER NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
+  price_option TEXT NOT NULL DEFAULT 'full' CHECK (price_option IN ('full', 'half', 'free')),
   is_synced BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,6 +73,16 @@ ALTER TABLE ticket_categories
 
 ALTER TABLE ticket_categories
   ALTER COLUMN quota DROP NOT NULL;
+
+ALTER TABLE transaction_items
+  ADD COLUMN IF NOT EXISTS price_option TEXT NOT NULL DEFAULT 'full';
+
+ALTER TABLE transaction_items
+  DROP CONSTRAINT IF EXISTS transaction_items_price_option_check;
+
+ALTER TABLE transaction_items
+  ADD CONSTRAINT transaction_items_price_option_check
+  CHECK (price_option IN ('full', 'half', 'free'));
 
 -- Create indexes untuk performa query
 CREATE INDEX IF NOT EXISTS idx_transactions_device_id ON transactions(device_id);
@@ -156,6 +167,7 @@ DECLARE
   effective_remaining INTEGER;
   day2_sold_qty INTEGER;
   item_subtotal INTEGER;
+  item_price_option TEXT;
 BEGIN
   IF jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'CART_EMPTY' USING ERRCODE = 'P0001';
@@ -234,15 +246,25 @@ BEGIN
     FROM ticket_categories
     WHERE id = item->>'category_id';
 
-    item_subtotal := COALESCE((item->>'subtotal')::INTEGER, category_row.price * (item->>'qty')::INTEGER);
+    item_price_option := COALESCE(item->>'price_option', 'full');
+    IF item_price_option NOT IN ('full', 'half', 'free') THEN
+      RAISE EXCEPTION 'INVALID_PRICE_OPTION:%', item_price_option USING ERRCODE = 'P0001';
+    END IF;
 
-    INSERT INTO transaction_items (id, transaction_id, category_id, qty, subtotal)
+    item_subtotal := CASE item_price_option
+      WHEN 'half' THEN (category_row.price::INTEGER * (item->>'qty')::INTEGER) / 2
+      WHEN 'free' THEN 0
+      ELSE category_row.price::INTEGER * (item->>'qty')::INTEGER
+    END;
+
+    INSERT INTO transaction_items (id, transaction_id, category_id, qty, subtotal, price_option)
     VALUES (
       COALESCE(item->>'id', gen_random_uuid()::TEXT),
       p_transaction_id,
       item->>'category_id',
       (item->>'qty')::INTEGER,
-      item_subtotal
+      item_subtotal,
+      COALESCE(item->>'price_option', 'full')
     );
   END LOOP;
 

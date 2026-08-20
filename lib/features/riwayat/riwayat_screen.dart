@@ -54,6 +54,7 @@ class RiwayatScreen extends ConsumerWidget {
             categoryId: row['category_id'] as String,
             qty: (row['qty'] as num).toInt(),
             subtotal: (row['subtotal'] as num).toInt(),
+            priceOption: row['price_option'] as String? ?? 'full',
             isSynced: true,
           ),
         )
@@ -290,7 +291,7 @@ class RiwayatScreen extends ConsumerWidget {
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
-                                                '${item.qty} x ${_formatRupiah(item.unitPrice)}',
+                                                '${item.qty} x ${_formatRupiah(item.unitPrice)} (${item.priceOption})',
                                                 style: Theme.of(context)
                                                     .textTheme
                                                     .bodyMedium

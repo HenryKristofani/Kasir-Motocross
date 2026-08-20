@@ -1085,6 +1085,18 @@ class $TransactionItemsTable extends TransactionItems
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _priceOptionMeta = const VerificationMeta(
+    'priceOption',
+  );
+  @override
+  late final GeneratedColumn<String> priceOption = GeneratedColumn<String>(
+    'price_option',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('full'),
+  );
   static const VerificationMeta _isSyncedMeta = const VerificationMeta(
     'isSynced',
   );
@@ -1107,6 +1119,7 @@ class $TransactionItemsTable extends TransactionItems
     categoryId,
     qty,
     subtotal,
+    priceOption,
     isSynced,
   ];
   @override
@@ -1161,6 +1174,15 @@ class $TransactionItemsTable extends TransactionItems
     } else if (isInserting) {
       context.missing(_subtotalMeta);
     }
+    if (data.containsKey('price_option')) {
+      context.handle(
+        _priceOptionMeta,
+        priceOption.isAcceptableOrUnknown(
+          data['price_option']!,
+          _priceOptionMeta,
+        ),
+      );
+    }
     if (data.containsKey('is_synced')) {
       context.handle(
         _isSyncedMeta,
@@ -1196,6 +1218,10 @@ class $TransactionItemsTable extends TransactionItems
         DriftSqlType.int,
         data['${effectivePrefix}subtotal'],
       )!,
+      priceOption: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}price_option'],
+      )!,
       isSynced: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_synced'],
@@ -1215,6 +1241,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
   final String categoryId;
   final int qty;
   final int subtotal;
+  final String priceOption;
   final bool isSynced;
   const TransactionItem({
     required this.id,
@@ -1222,6 +1249,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     required this.categoryId,
     required this.qty,
     required this.subtotal,
+    required this.priceOption,
     required this.isSynced,
   });
   @override
@@ -1232,6 +1260,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     map['category_id'] = Variable<String>(categoryId);
     map['qty'] = Variable<int>(qty);
     map['subtotal'] = Variable<int>(subtotal);
+    map['price_option'] = Variable<String>(priceOption);
     map['is_synced'] = Variable<bool>(isSynced);
     return map;
   }
@@ -1243,6 +1272,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       categoryId: Value(categoryId),
       qty: Value(qty),
       subtotal: Value(subtotal),
+      priceOption: Value(priceOption),
       isSynced: Value(isSynced),
     );
   }
@@ -1258,6 +1288,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       categoryId: serializer.fromJson<String>(json['categoryId']),
       qty: serializer.fromJson<int>(json['qty']),
       subtotal: serializer.fromJson<int>(json['subtotal']),
+      priceOption: serializer.fromJson<String>(json['priceOption']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
   }
@@ -1270,6 +1301,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
       'categoryId': serializer.toJson<String>(categoryId),
       'qty': serializer.toJson<int>(qty),
       'subtotal': serializer.toJson<int>(subtotal),
+      'priceOption': serializer.toJson<String>(priceOption),
       'isSynced': serializer.toJson<bool>(isSynced),
     };
   }
@@ -1280,6 +1312,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     String? categoryId,
     int? qty,
     int? subtotal,
+    String? priceOption,
     bool? isSynced,
   }) => TransactionItem(
     id: id ?? this.id,
@@ -1287,6 +1320,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
     categoryId: categoryId ?? this.categoryId,
     qty: qty ?? this.qty,
     subtotal: subtotal ?? this.subtotal,
+    priceOption: priceOption ?? this.priceOption,
     isSynced: isSynced ?? this.isSynced,
   );
   TransactionItem copyWithCompanion(TransactionItemsCompanion data) {
@@ -1300,6 +1334,9 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           : this.categoryId,
       qty: data.qty.present ? data.qty.value : this.qty,
       subtotal: data.subtotal.present ? data.subtotal.value : this.subtotal,
+      priceOption: data.priceOption.present
+          ? data.priceOption.value
+          : this.priceOption,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
   }
@@ -1312,14 +1349,22 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           ..write('categoryId: $categoryId, ')
           ..write('qty: $qty, ')
           ..write('subtotal: $subtotal, ')
+          ..write('priceOption: $priceOption, ')
           ..write('isSynced: $isSynced')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, transactionId, categoryId, qty, subtotal, isSynced);
+  int get hashCode => Object.hash(
+    id,
+    transactionId,
+    categoryId,
+    qty,
+    subtotal,
+    priceOption,
+    isSynced,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1329,6 +1374,7 @@ class TransactionItem extends DataClass implements Insertable<TransactionItem> {
           other.categoryId == this.categoryId &&
           other.qty == this.qty &&
           other.subtotal == this.subtotal &&
+          other.priceOption == this.priceOption &&
           other.isSynced == this.isSynced);
 }
 
@@ -1338,6 +1384,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
   final Value<String> categoryId;
   final Value<int> qty;
   final Value<int> subtotal;
+  final Value<String> priceOption;
   final Value<bool> isSynced;
   final Value<int> rowid;
   const TransactionItemsCompanion({
@@ -1346,6 +1393,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     this.categoryId = const Value.absent(),
     this.qty = const Value.absent(),
     this.subtotal = const Value.absent(),
+    this.priceOption = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1355,6 +1403,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     required String categoryId,
     required int qty,
     required int subtotal,
+    this.priceOption = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1368,6 +1417,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Expression<String>? categoryId,
     Expression<int>? qty,
     Expression<int>? subtotal,
+    Expression<String>? priceOption,
     Expression<bool>? isSynced,
     Expression<int>? rowid,
   }) {
@@ -1377,6 +1427,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
       if (categoryId != null) 'category_id': categoryId,
       if (qty != null) 'qty': qty,
       if (subtotal != null) 'subtotal': subtotal,
+      if (priceOption != null) 'price_option': priceOption,
       if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1388,6 +1439,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     Value<String>? categoryId,
     Value<int>? qty,
     Value<int>? subtotal,
+    Value<String>? priceOption,
     Value<bool>? isSynced,
     Value<int>? rowid,
   }) {
@@ -1397,6 +1449,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
       categoryId: categoryId ?? this.categoryId,
       qty: qty ?? this.qty,
       subtotal: subtotal ?? this.subtotal,
+      priceOption: priceOption ?? this.priceOption,
       isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
     );
@@ -1420,6 +1473,9 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
     if (subtotal.present) {
       map['subtotal'] = Variable<int>(subtotal.value);
     }
+    if (priceOption.present) {
+      map['price_option'] = Variable<String>(priceOption.value);
+    }
     if (isSynced.present) {
       map['is_synced'] = Variable<bool>(isSynced.value);
     }
@@ -1437,6 +1493,7 @@ class TransactionItemsCompanion extends UpdateCompanion<TransactionItem> {
           ..write('categoryId: $categoryId, ')
           ..write('qty: $qty, ')
           ..write('subtotal: $subtotal, ')
+          ..write('priceOption: $priceOption, ')
           ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2527,6 +2584,7 @@ typedef $$TransactionItemsTableCreateCompanionBuilder =
       required String categoryId,
       required int qty,
       required int subtotal,
+      Value<String> priceOption,
       Value<bool> isSynced,
       Value<int> rowid,
     });
@@ -2537,6 +2595,7 @@ typedef $$TransactionItemsTableUpdateCompanionBuilder =
       Value<String> categoryId,
       Value<int> qty,
       Value<int> subtotal,
+      Value<String> priceOption,
       Value<bool> isSynced,
       Value<int> rowid,
     });
@@ -2572,6 +2631,11 @@ class $$TransactionItemsTableFilterComposer
 
   ColumnFilters<int> get subtotal => $composableBuilder(
     column: $table.subtotal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priceOption => $composableBuilder(
+    column: $table.priceOption,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2615,6 +2679,11 @@ class $$TransactionItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get priceOption => $composableBuilder(
+    column: $table.priceOption,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isSynced => $composableBuilder(
     column: $table.isSynced,
     builder: (column) => ColumnOrderings(column),
@@ -2648,6 +2717,11 @@ class $$TransactionItemsTableAnnotationComposer
 
   GeneratedColumn<int> get subtotal =>
       $composableBuilder(column: $table.subtotal, builder: (column) => column);
+
+  GeneratedColumn<String> get priceOption => $composableBuilder(
+    column: $table.priceOption,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isSynced =>
       $composableBuilder(column: $table.isSynced, builder: (column) => column);
@@ -2695,6 +2769,7 @@ class $$TransactionItemsTableTableManager
                 Value<String> categoryId = const Value.absent(),
                 Value<int> qty = const Value.absent(),
                 Value<int> subtotal = const Value.absent(),
+                Value<String> priceOption = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionItemsCompanion(
@@ -2703,6 +2778,7 @@ class $$TransactionItemsTableTableManager
                 categoryId: categoryId,
                 qty: qty,
                 subtotal: subtotal,
+                priceOption: priceOption,
                 isSynced: isSynced,
                 rowid: rowid,
               ),
@@ -2713,6 +2789,7 @@ class $$TransactionItemsTableTableManager
                 required String categoryId,
                 required int qty,
                 required int subtotal,
+                Value<String> priceOption = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => TransactionItemsCompanion.insert(
@@ -2721,6 +2798,7 @@ class $$TransactionItemsTableTableManager
                 categoryId: categoryId,
                 qty: qty,
                 subtotal: subtotal,
+                priceOption: priceOption,
                 isSynced: isSynced,
                 rowid: rowid,
               ),
