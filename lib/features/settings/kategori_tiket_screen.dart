@@ -38,8 +38,6 @@ class KategoriTiketScreen extends ConsumerWidget {
         ? kategori!.name
         : parentNames.first;
     var selectedDayType = kategori?.dayType ?? 'day1';
-    if (selectedName == 'Crosser' && selectedDayType == 'bundling')
-      selectedDayType = 'day1';
     if (selectedName == 'Crosser') priceController.text = '0';
 
     showDialog(
@@ -73,7 +71,6 @@ class KategoriTiketScreen extends ConsumerWidget {
                         selectedName = value;
                         nameController.text = value;
                         if (value == 'Crosser') {
-                          selectedDayType = 'day1';
                           priceController.text = '0';
                         }
                       });
@@ -92,16 +89,13 @@ class KategoriTiketScreen extends ConsumerWidget {
                         value: 'day2',
                         child: Text('Day 2'),
                       ),
-                      if (!isCrosser)
-                        const DropdownMenuItem(
-                          value: 'bundling',
-                          child: Text('Bundling 2 Hari'),
-                        ),
+                      const DropdownMenuItem(
+                        value: 'bundling',
+                        child: Text('Bundling 2 Hari'),
+                      ),
                     ],
-                    onChanged: isCrosser
-                        ? null
-                        : (value) =>
-                              setState(() => selectedDayType = value ?? 'day1'),
+                    onChanged: (value) =>
+                        setState(() => selectedDayType = value ?? 'day1'),
                   ),
                   const SizedBox(height: 16),
                   TextField(
