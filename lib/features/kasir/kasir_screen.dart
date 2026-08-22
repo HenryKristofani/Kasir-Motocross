@@ -1379,7 +1379,9 @@ class KasirScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 child: Text(
-                                  'Sisa: $sisaKuota',
+                                  cat.isBundling
+                                      ? 'Sisa efektif: $sisaKuota'
+                                      : 'Kuota: ${cat.quota} / Sisa: $sisaKuota',
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: AppColors.safetyOrange,

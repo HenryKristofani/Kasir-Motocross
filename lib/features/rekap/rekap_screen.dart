@@ -67,7 +67,7 @@ class RekapScreen extends ConsumerWidget {
         }
         return '${_formatTanggal(filter.rangeStart!)} - ${_formatTanggal(filter.rangeEnd!)}';
       case RekapPeriodType.semuaWaktu:
-        return 'Semua Waktu';
+        return 'Semua Hari';
     }
   }
 
@@ -297,7 +297,7 @@ class RekapScreen extends ConsumerWidget {
                   value: RekapPeriodType.semuaWaktu,
                   checked:
                       selectedFilter.periodType == RekapPeriodType.semuaWaktu,
-                  child: const Text('Semua Waktu'),
+                  child: const Text('Semua Hari'),
                 ),
               ],
               child: Center(
@@ -403,7 +403,7 @@ class RekapScreen extends ConsumerWidget {
                                   color: AppColors.trackWhite.withValues(
                                     alpha: 0.7,
                                   ),
-                                ),  
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Row(

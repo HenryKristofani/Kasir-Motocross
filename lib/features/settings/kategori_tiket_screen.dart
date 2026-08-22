@@ -23,6 +23,7 @@ class KategoriTiketScreen extends ConsumerWidget {
       'VVIP',
       'VIP',
       'Paddock',
+      'Paddock Crosser',
       'Paddock Undangan',
       'Umum',
       'Crosser',
@@ -330,9 +331,10 @@ class KategoriTiketScreen extends ConsumerWidget {
                         day1Quota - (sisaKuotaMap[relatedDay1.id] ?? day1Quota);
                     final day2Sold =
                         day2Quota - (sisaKuotaMap[relatedDay2.id] ?? day2Quota);
-                    final bundleSold = [day1Sold, day2Sold].reduce(
-                      (a, b) => a < b ? a : b,
-                    );
+                    final bundleSold = [
+                      day1Sold,
+                      day2Sold,
+                    ].reduce((a, b) => a < b ? a : b);
                     return bundleSold.clamp(0, 1 << 31);
                   })()
                 : kategori.quota != null
@@ -372,7 +374,10 @@ class KategoriTiketScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           _formatRupiah(kategori.price),
@@ -400,7 +405,7 @@ class KategoriTiketScreen extends ConsumerWidget {
                             child: Text(
                               kategori.isBundling
                                   ? 'Terjual: $terjual / Sisa efektif: $sisaKuota'
-                                  : 'Terjual: $terjual / Kuota: ${kategori.quota}',
+                                  : 'Kuota: ${kategori.quota} / Terjual: $terjual / Sisa: $sisaKuota',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: AppColors.dirtTan,
@@ -423,16 +428,10 @@ class KategoriTiketScreen extends ConsumerWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Edit'),
-                    ),
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
                     const PopupMenuItem(
                       value: 'delete',
-                      child: Text(
-                        'Hapus',
-                        style: TextStyle(color: Colors.red),
-                      ),
+                      child: Text('Hapus', style: TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),

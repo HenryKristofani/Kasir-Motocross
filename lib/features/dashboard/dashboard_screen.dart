@@ -80,7 +80,7 @@ class DashboardScreen extends ConsumerWidget {
               CheckedPopupMenuItem(
                 value: RekapPeriodType.semuaWaktu,
                 checked: filter.periodType == RekapPeriodType.semuaWaktu,
-                child: const Text('Semua Waktu'),
+                child: const Text('Semua Hari'),
               ),
             ],
           ),
@@ -308,7 +308,7 @@ class _DashboardSalesSummary extends StatelessWidget {
 
   String _periodLabel() {
     if (filter.periodType == RekapPeriodType.hariIni) return 'Hari Ini';
-    if (filter.periodType == RekapPeriodType.semuaWaktu) return 'Semua Waktu';
+    if (filter.periodType == RekapPeriodType.semuaWaktu) return 'Semua Hari';
     return DateFormat('dd MMM yyyy', 'id_ID').format(filter.selectedDate);
   }
 

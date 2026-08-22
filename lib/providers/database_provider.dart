@@ -266,9 +266,12 @@ final sisaKuotaPerKategoriProvider =
       return result;
     });
 
-// State filter periode rekap: hari ini, tanggal tertentu, rentang tanggal, semua waktu.
+// State filter periode rekap: default semua hari; statistik hari kedua punya provider tetap.
 final rekapDateFilterProvider = StateProvider<RekapDateFilter>(
-  (ref) => RekapDateFilter.hariIni(),
+  (ref) => RekapDateFilter(
+    periodType: RekapPeriodType.semuaWaktu,
+    selectedDate: DateTime.now(),
+  ),
 );
 
 DateTime _startOfDay(DateTime date) =>
@@ -389,6 +392,94 @@ Future<List<RekapPenjualanItem>> _loadRekapPenjualanByRange(
   return result;
 }
 
+Future<List<RekapPenjualanItem>> _loadRekapPenjualanHariKeduaFromSupabase(
+  List<TicketCategoryModel> categories,
+) async {
+  final client = Supabase.instance.client;
+  final startUtc = DateTime.utc(2026, 8, 22, 17);
+  final endUtc = DateTime.utc(2026, 8, 23, 17);
+  final rows = <Map<String, dynamic>>[];
+  const pageSize = 1000;
+  var from = 0;
+
+  while (true) {
+    final page = await client
+        .from('transaction_items')
+        .select(
+          'id, transaction_id, category_id, qty, subtotal, price_option, '
+          'transactions!inner(id, is_voided, created_at)',
+        )
+        .eq('transactions.is_voided', false)
+        .gte('transactions.created_at', startUtc.toIso8601String())
+        .lt('transactions.created_at', endUtc.toIso8601String())
+        .range(from, from + pageSize - 1);
+    final pageRows = List<Map<String, dynamic>>.from(page);
+    rows.addAll(pageRows);
+
+    if (pageRows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  final categoryMap = {
+    for (final category in categories) category.id: category,
+  };
+  final aggregated =
+      <
+        String,
+        ({
+          int qty,
+          int subtotal,
+          int freeQty,
+          int paidQty,
+          int freeSubtotal,
+          int paidSubtotal,
+        })
+      >{};
+
+  for (final row in rows) {
+    final categoryId = row['category_id'] as String;
+    if (!categoryMap.containsKey(categoryId)) continue;
+
+    final qty = (row['qty'] as num).toInt();
+    final subtotal = (row['subtotal'] as num).toInt();
+    final isFree = subtotal == 0;
+    final current = aggregated[categoryId];
+    aggregated[categoryId] = (
+      qty: (current?.qty ?? 0) + qty,
+      subtotal: (current?.subtotal ?? 0) + subtotal,
+      freeQty: (current?.freeQty ?? 0) + (isFree ? qty : 0),
+      paidQty: (current?.paidQty ?? 0) + (isFree ? 0 : qty),
+      freeSubtotal: (current?.freeSubtotal ?? 0) + (isFree ? subtotal : 0),
+      paidSubtotal: (current?.paidSubtotal ?? 0) + (isFree ? 0 : subtotal),
+    );
+  }
+
+  const dayOrder = {'day1': 0, 'day2': 1, 'bundling': 2};
+  final result = categories.map((category) {
+    final totals = aggregated[category.id];
+    return RekapPenjualanItem(
+      kategoriId: category.id,
+      kategoriName: category.name,
+      dayType: category.dayType,
+      totalQty: totals?.qty ?? 0,
+      totalSubtotal: totals?.subtotal ?? 0,
+      freeQty: totals?.freeQty ?? 0,
+      paidQty: totals?.paidQty ?? 0,
+      freeSubtotal: totals?.freeSubtotal ?? 0,
+      paidSubtotal: totals?.paidSubtotal ?? 0,
+    );
+  }).toList()
+    ..sort((a, b) {
+      final byName = a.kategoriName.toLowerCase().compareTo(
+        b.kategoriName.toLowerCase(),
+      );
+      if (byName != 0) return byName;
+      return (dayOrder[a.dayType] ?? 99).compareTo(dayOrder[b.dayType] ?? 99);
+    });
+
+  return result;
+}
+
 // Provider untuk rekap penjualan per kategori dengan filter periode fleksibel.
 // EXCLUDE transaksi yang di-void (isVoided = true).
 final rekapPenjualanProvider =
@@ -428,18 +519,8 @@ final rekapPenjualanHariIniProvider =
 // Statistik operasional event hari kedua: selalu tanggal 23 Agustus 2026.
 final rekapPenjualanHariKeduaProvider =
     FutureProvider.autoDispose<List<RekapPenjualanItem>>((ref) async {
-      final transactions = await ref.watch(transactionsStreamProvider.future);
-      final items = await ref.watch(transactionItemsStreamProvider.future);
       final categories = await ref.watch(kategoriTiketStreamProvider.future);
-      final secondDay = DateTime(2026, 8, 23);
-
-      return _loadRekapPenjualanByRange(
-        transactions,
-        items,
-        categories,
-        startAt: secondDay,
-        endAtExclusive: DateTime(2026, 8, 24),
-      );
+      return _loadRekapPenjualanHariKeduaFromSupabase(categories);
     });
 
 final transactionTotalsFromItemsProvider =
