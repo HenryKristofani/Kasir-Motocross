@@ -425,6 +425,23 @@ final rekapPenjualanHariIniProvider =
       );
     });
 
+// Statistik operasional event hari kedua: selalu tanggal 23 Agustus 2026.
+final rekapPenjualanHariKeduaProvider =
+    FutureProvider.autoDispose<List<RekapPenjualanItem>>((ref) async {
+      final transactions = await ref.watch(transactionsStreamProvider.future);
+      final items = await ref.watch(transactionItemsStreamProvider.future);
+      final categories = await ref.watch(kategoriTiketStreamProvider.future);
+      final secondDay = DateTime(2026, 8, 23);
+
+      return _loadRekapPenjualanByRange(
+        transactions,
+        items,
+        categories,
+        startAt: secondDay,
+        endAtExclusive: DateTime(2026, 8, 24),
+      );
+    });
+
 final transactionTotalsFromItemsProvider =
     FutureProvider.autoDispose<Map<String, int>>((ref) async {
       final items = await ref.watch(transactionItemsStreamProvider.future);

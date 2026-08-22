@@ -21,6 +21,7 @@ class DashboardScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(kategoriTiketStreamProvider);
     final quotaAsync = ref.watch(sisaKuotaPerKategoriProvider);
     final salesAsync = ref.watch(rekapPenjualanProvider);
+    final secondDaySalesAsync = ref.watch(rekapPenjualanHariKeduaProvider);
     final filter = ref.watch(rekapDateFilterProvider);
 
     return Scaffold(
@@ -97,18 +98,26 @@ class DashboardScreen extends ConsumerWidget {
             error: error,
             onRetry: () => ref.refresh(sisaKuotaPerKategoriProvider),
           ),
-          data: (remainingById) => salesAsync.when(
+          data: (remainingById) => secondDaySalesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => _ErrorState(
               error: error,
-              onRetry: () => ref.refresh(rekapPenjualanProvider),
+              onRetry: () => ref.refresh(rekapPenjualanHariKeduaProvider),
             ),
-            data: (sales) => _DashboardContent(
-              categories: categories,
-              remainingById: remainingById,
-              sales: sales,
-              filter: filter,
-              formatNumber: _formatNumber,
+            data: (secondDaySales) => salesAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _ErrorState(
+                error: error,
+                onRetry: () => ref.refresh(rekapPenjualanProvider),
+              ),
+              data: (sales) => _DashboardContent(
+                categories: categories,
+                remainingById: remainingById,
+                sales: sales,
+                secondDaySales: secondDaySales,
+                filter: filter,
+                formatNumber: _formatNumber,
+              ),
             ),
           ),
         ),
@@ -122,6 +131,7 @@ class _DashboardContent extends StatelessWidget {
     required this.categories,
     required this.remainingById,
     required this.sales,
+    required this.secondDaySales,
     required this.filter,
     required this.formatNumber,
   });
@@ -129,6 +139,7 @@ class _DashboardContent extends StatelessWidget {
   final List<TicketCategoryModel> categories;
   final Map<String, int> remainingById;
   final List<RekapPenjualanItem> sales;
+  final List<RekapPenjualanItem> secondDaySales;
   final RekapDateFilter filter;
   final String Function(int) formatNumber;
 
@@ -161,6 +172,11 @@ class _DashboardContent extends StatelessWidget {
         _DashboardSalesSummary(
           sales: sales,
           filter: filter,
+          formatNumber: formatNumber,
+        ),
+        const SizedBox(height: 28),
+        _SecondDaySalesSection(
+          sales: secondDaySales,
           formatNumber: formatNumber,
         ),
         const SizedBox(height: 28),
@@ -350,6 +366,173 @@ class _DashboardSalesSummary extends StatelessWidget {
           const Text('Tidak ada tiket keluar pada periode ini.')
         else
           _SalesBreakdownTable(sales: sales, formatNumber: formatNumber),
+      ],
+    );
+  }
+}
+
+class _SecondDaySalesSection extends StatelessWidget {
+  const _SecondDaySalesSection({
+    required this.sales,
+    required this.formatNumber,
+  });
+
+  static const int operationalQuota = 4950;
+
+  final List<RekapPenjualanItem> sales;
+  final String Function(int) formatNumber;
+
+  String _dayLabel(String dayType) => switch (dayType) {
+    'day1' => 'Day 1',
+    'day2' => 'Day 2',
+    'bundling' => 'Bundling 2 Hari',
+    _ => dayType,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final rows =
+        <({String ticketName, String status, int qty, int subtotal})>[];
+
+    for (final item in sales) {
+      final ticketName = '${item.kategoriName} - ${_dayLabel(item.dayType)}';
+      if (item.paidQty > 0) {
+        rows.add((
+          ticketName: ticketName,
+          status: 'BERBAYAR',
+          qty: item.paidQty,
+          subtotal: item.paidSubtotal,
+        ));
+      }
+      if (item.freeQty > 0) {
+        rows.add((
+          ticketName: ticketName,
+          status: 'GRATIS',
+          qty: item.freeQty,
+          subtotal: item.freeSubtotal,
+        ));
+      }
+    }
+
+    final totalSold = rows.fold<int>(0, (sum, row) => sum + row.qty);
+    final totalSubtotal = rows.fold<int>(0, (sum, row) => sum + row.subtotal);
+    final remaining = (operationalQuota - totalSold).clamp(0, operationalQuota);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'STATISTIK 23 AGUSTUS 2026 (HARI KEDUA)',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _MetricCard(
+              icon: Icons.confirmation_number_outlined,
+              title: 'Kuota Hari Kedua',
+              value: formatNumber(operationalQuota),
+              color: AppColors.asphalt,
+            ),
+            _MetricCard(
+              icon: Icons.shopping_cart_checkout,
+              title: 'Total Tiket Keluar',
+              value: formatNumber(totalSold),
+              color: AppColors.safetyOrange,
+            ),
+            _MetricCard(
+              icon: Icons.inventory_2_outlined,
+              title: 'Sisa Kuota Hari Kedua',
+              value: formatNumber(remaining),
+              color: Colors.teal,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Gratis dan berbayar sama-sama mengurangi kuota 4.950. '
+          'Total nominal berbayar: Rp${formatNumber(totalSubtotal)}.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        Card(
+          margin: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: rows.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('Belum ada tiket keluar pada 23 Agustus 2026.'),
+                )
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: WidgetStatePropertyAll(AppColors.asphalt),
+                    columns: const [
+                      DataColumn(label: Text('Nama Tiket Lengkap')),
+                      DataColumn(label: Text('Status Tiket')),
+                      DataColumn(label: Text('Jumlah Tiket')),
+                      DataColumn(label: Text('Total Nominal (Rp)')),
+                    ],
+                    rows: [
+                      ...rows.map(
+                        (row) => DataRow(
+                          color: WidgetStatePropertyAll(
+                            row.status == 'GRATIS'
+                                ? Colors.teal.withValues(alpha: 0.08)
+                                : null,
+                          ),
+                          cells: [
+                            DataCell(Text(row.ticketName)),
+                            DataCell(
+                              Text(
+                                row.status,
+                                style: TextStyle(
+                                  color: row.status == 'GRATIS'
+                                      ? Colors.teal[800]
+                                      : AppColors.safetyOrange,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            DataCell(Text(formatNumber(row.qty))),
+                            DataCell(Text('Rp ${formatNumber(row.subtotal)}')),
+                          ],
+                        ),
+                      ),
+                      DataRow(
+                        color: const WidgetStatePropertyAll(Color(0xFFE8E8E8)),
+                        cells: [
+                          const DataCell(
+                            Text(
+                              'TOTAL',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const DataCell(SizedBox.shrink()),
+                          DataCell(
+                            Text(
+                              formatNumber(totalSold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            Text(
+                              'Rp ${formatNumber(totalSubtotal)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+        ),
       ],
     );
   }
