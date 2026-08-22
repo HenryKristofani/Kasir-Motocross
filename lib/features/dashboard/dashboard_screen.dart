@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/error_message.dart';
+import '../../core/widgets/pos_date_picker.dart';
 import '../../data/models/ticket_category_model.dart';
+import '../../data/models/rekap_penjualan_model.dart';
 import '../../providers/database_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -17,9 +20,71 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(kategoriTiketStreamProvider);
     final quotaAsync = ref.watch(sisaKuotaPerKategoriProvider);
+    final salesAsync = ref.watch(rekapPenjualanProvider);
+    final filter = ref.watch(rekapDateFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('DASHBOARD')),
+      appBar: AppBar(
+        title: const Text('DASHBOARD'),
+        actions: [
+          PopupMenuButton<RekapPeriodType>(
+            tooltip: 'Filter data dashboard',
+            onSelected: (periodType) async {
+              final notifier = ref.read(rekapDateFilterProvider.notifier);
+              final current = ref.read(rekapDateFilterProvider);
+              if (periodType == RekapPeriodType.tanggalTertentu) {
+                final selected = await showPosDatePicker(
+                  context: context,
+                  initialDate: current.selectedDate,
+                  helpText: 'Pilih tanggal dashboard',
+                );
+                if (selected == null) return;
+                final date = DateTime(
+                  selected.year,
+                  selected.month,
+                  selected.day,
+                );
+                notifier.state = current.copyWith(
+                  periodType: RekapPeriodType.tanggalTertentu,
+                  selectedDate: date,
+                  clearRange: true,
+                );
+                return;
+              }
+              if (periodType == RekapPeriodType.hariIni) {
+                final now = DateTime.now();
+                notifier.state = current.copyWith(
+                  periodType: RekapPeriodType.hariIni,
+                  selectedDate: DateTime(now.year, now.month, now.day),
+                  clearRange: true,
+                );
+                return;
+              }
+              notifier.state = current.copyWith(
+                periodType: RekapPeriodType.semuaWaktu,
+                clearRange: true,
+              );
+            },
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: RekapPeriodType.hariIni,
+                checked: filter.periodType == RekapPeriodType.hariIni,
+                child: const Text('Hari Ini'),
+              ),
+              CheckedPopupMenuItem(
+                value: RekapPeriodType.tanggalTertentu,
+                checked: filter.periodType == RekapPeriodType.tanggalTertentu,
+                child: const Text('Pilih Hari'),
+              ),
+              CheckedPopupMenuItem(
+                value: RekapPeriodType.semuaWaktu,
+                checked: filter.periodType == RekapPeriodType.semuaWaktu,
+                child: const Text('Semua Waktu'),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: categoriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorState(
@@ -32,10 +97,19 @@ class DashboardScreen extends ConsumerWidget {
             error: error,
             onRetry: () => ref.refresh(sisaKuotaPerKategoriProvider),
           ),
-          data: (remainingById) => _DashboardContent(
-            categories: categories,
-            remainingById: remainingById,
-            formatNumber: _formatNumber,
+          data: (remainingById) => salesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => _ErrorState(
+              error: error,
+              onRetry: () => ref.refresh(rekapPenjualanProvider),
+            ),
+            data: (sales) => _DashboardContent(
+              categories: categories,
+              remainingById: remainingById,
+              sales: sales,
+              filter: filter,
+              formatNumber: _formatNumber,
+            ),
           ),
         ),
       ),
@@ -47,11 +121,15 @@ class _DashboardContent extends StatelessWidget {
   const _DashboardContent({
     required this.categories,
     required this.remainingById,
+    required this.sales,
+    required this.filter,
     required this.formatNumber,
   });
 
   final List<TicketCategoryModel> categories;
   final Map<String, int> remainingById;
+  final List<RekapPenjualanItem> sales;
+  final RekapDateFilter filter;
   final String Function(int) formatNumber;
 
   @override
@@ -80,6 +158,12 @@ class _DashboardContent extends StatelessWidget {
       children: [
         _BrandingBanner(),
         const SizedBox(height: 20),
+        _DashboardSalesSummary(
+          sales: sales,
+          filter: filter,
+          formatNumber: formatNumber,
+        ),
+        const SizedBox(height: 28),
         Text(
           'Ringkasan Tiket',
           style: Theme.of(context).textTheme.headlineSmall,
@@ -195,6 +279,233 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
+class _DashboardSalesSummary extends StatelessWidget {
+  const _DashboardSalesSummary({
+    required this.sales,
+    required this.filter,
+    required this.formatNumber,
+  });
+
+  final List<RekapPenjualanItem> sales;
+  final RekapDateFilter filter;
+  final String Function(int) formatNumber;
+
+  String _periodLabel() {
+    if (filter.periodType == RekapPeriodType.hariIni) return 'Hari Ini';
+    if (filter.periodType == RekapPeriodType.semuaWaktu) return 'Semua Waktu';
+    return DateFormat('dd MMM yyyy', 'id_ID').format(filter.selectedDate);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = sales.fold<int>(0, (sum, item) => sum + item.totalQty);
+    final free = sales.fold<int>(0, (sum, item) => sum + item.freeQty);
+    final paid = sales.fold<int>(0, (sum, item) => sum + item.paidQty);
+    final nominal = sales.fold<int>(0, (sum, item) => sum + item.totalSubtotal);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Penjualan: ${_periodLabel()}',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _MetricCard(
+              icon: Icons.confirmation_number_outlined,
+              title: 'Keseluruhan Tiket Keluar',
+              value: formatNumber(total),
+              color: AppColors.asphalt,
+            ),
+            _MetricCard(
+              icon: Icons.card_giftcard_outlined,
+              title: 'Tiket Gratis Keluar',
+              value: formatNumber(free),
+              color: Colors.teal,
+            ),
+            _MetricCard(
+              icon: Icons.point_of_sale,
+              title: 'Tiket Dibeli Keluar',
+              value: formatNumber(paid),
+              color: AppColors.safetyOrange,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Nominal tiket dibeli: Rp${formatNumber(nominal)}',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'BREAKDOWN TIKET KELUAR PER KATEGORI',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        if (sales.isEmpty)
+          const Text('Tidak ada tiket keluar pada periode ini.')
+        else
+          _SalesBreakdownTable(sales: sales, formatNumber: formatNumber),
+      ],
+    );
+  }
+}
+
+class _SalesBreakdownTable extends StatelessWidget {
+  const _SalesBreakdownTable({required this.sales, required this.formatNumber});
+
+  final List<RekapPenjualanItem> sales;
+  final String Function(int) formatNumber;
+
+  String _dayLabel(String dayType) => switch (dayType) {
+    'day1' => 'Day 1',
+    'day2' => 'Day 2',
+    'bundling' => 'Bundling 2 Hari',
+    _ => dayType,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final rows =
+        <
+          ({
+            String category,
+            String dayType,
+            String status,
+            int qty,
+            int subtotal,
+          })
+        >[];
+
+    final groupedSales = [...sales]
+      ..sort((a, b) {
+        final byCategory = a.kategoriName.toLowerCase().compareTo(
+          b.kategoriName.toLowerCase(),
+        );
+        if (byCategory != 0) return byCategory;
+
+        const dayOrder = {'day1': 0, 'day2': 1, 'bundling': 2};
+        final byDay = (dayOrder[a.dayType] ?? 99).compareTo(
+          dayOrder[b.dayType] ?? 99,
+        );
+        if (byDay != 0) return byDay;
+
+        return 0;
+      });
+
+    for (final item in groupedSales) {
+      if (item.paidQty > 0) {
+        rows.add((
+          category: item.kategoriName,
+          dayType: item.dayType,
+          status: 'BERBAYAR',
+          qty: item.paidQty,
+          subtotal: item.paidSubtotal,
+        ));
+      }
+      if (item.freeQty > 0) {
+        rows.add((
+          category: item.kategoriName,
+          dayType: item.dayType,
+          status: 'GRATIS',
+          qty: item.freeQty,
+          subtotal: item.freeSubtotal,
+        ));
+      }
+      if (item.totalQty == 0) {
+        rows.add((
+          category: item.kategoriName,
+          dayType: item.dayType,
+          status: 'BELUM ADA',
+          qty: 0,
+          subtotal: 0,
+        ));
+      }
+    }
+
+    final totalQty = rows.fold<int>(0, (sum, row) => sum + row.qty);
+    final totalSubtotal = rows.fold<int>(0, (sum, row) => sum + row.subtotal);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          headingRowColor: WidgetStatePropertyAll(AppColors.asphalt),
+          dataRowMinHeight: 44,
+          dataRowMaxHeight: 56,
+          columns: const [
+            DataColumn(label: Text('Nama Tiket Lengkap')),
+            DataColumn(label: Text('Tipe Hari')),
+            DataColumn(label: Text('Status Tiket')),
+            DataColumn(label: Text('Jumlah Tiket')),
+            DataColumn(label: Text('Total Nominal (Rp)')),
+          ],
+          rows: [
+            ...rows.map(
+              (row) => DataRow(
+                color: WidgetStatePropertyAll(
+                  row.status == 'GRATIS'
+                      ? Colors.teal.withValues(alpha: 0.08)
+                      : row.status == 'BELUM ADA'
+                      ? Colors.grey.withValues(alpha: 0.08)
+                      : null,
+                ),
+                cells: [
+                  DataCell(Text('${row.category} - ${_dayLabel(row.dayType)}')),
+                  DataCell(Text(row.dayType)),
+                  DataCell(
+                    Text(
+                      row.status,
+                      style: TextStyle(
+                        color: row.status == 'GRATIS'
+                            ? Colors.teal[800]
+                            : row.status == 'BELUM ADA'
+                            ? Colors.grey[700]
+                            : AppColors.safetyOrange,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  DataCell(Text(formatNumber(row.qty))),
+                  DataCell(Text('Rp ${formatNumber(row.subtotal)}')),
+                ],
+              ),
+            ),
+            DataRow(
+              color: const WidgetStatePropertyAll(Color(0xFFE8E8E8)),
+              cells: [
+                const DataCell(
+                  Text('TOTAL', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                const DataCell(SizedBox.shrink()),
+                const DataCell(SizedBox.shrink()),
+                DataCell(
+                  Text(
+                    formatNumber(totalQty),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    'Rp ${formatNumber(totalSubtotal)}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _BrandingBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -231,7 +542,8 @@ class _BrandingBanner extends StatelessWidget {
                   child: Image.asset(
                     'assets/images/logo.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(Icons.sports_motorsports),
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.sports_motorsports),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -242,10 +554,11 @@ class _BrandingBanner extends StatelessWidget {
                     children: [
                       Text(
                         'POS MOTOCROSS',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Text(

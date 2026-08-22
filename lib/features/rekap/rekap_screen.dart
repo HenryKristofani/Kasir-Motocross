@@ -366,6 +366,22 @@ class RekapScreen extends ConsumerWidget {
                   0,
                   (sum, item) => sum + item.totalSubtotal,
                 );
+                final freeQty = rekapList.fold<int>(
+                  0,
+                  (sum, item) => sum + item.freeQty,
+                );
+                final paidQty = rekapList.fold<int>(
+                  0,
+                  (sum, item) => sum + item.paidQty,
+                );
+                final freeSubtotal = rekapList.fold<int>(
+                  0,
+                  (sum, item) => sum + item.freeSubtotal,
+                );
+                final paidSubtotal = rekapList.fold<int>(
+                  0,
+                  (sum, item) => sum + item.paidSubtotal,
+                );
 
                 return ListView(
                   padding: const EdgeInsets.all(16),
@@ -381,13 +397,13 @@ class RekapScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Total Penjualan',
+                            'Total Tiket Keluar',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
                                   color: AppColors.trackWhite.withValues(
                                     alpha: 0.7,
                                   ),
-                                ),
+                                ),  
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -407,7 +423,7 @@ class RekapScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Total Tiket',
+                                      'Keseluruhan Tiket Keluar',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -435,7 +451,7 @@ class RekapScreen extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Grand Total',
+                                      'Total Nominal Tiket Keluar',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -451,6 +467,33 @@ class RekapScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Pemisahan Tiket Keluar',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ReportMetric(
+                            label: 'Tiket Gratis Keluar',
+                            value: '$freeQty pcs',
+                            detail: 'Subtotal = ${_formatRupiah(freeSubtotal)}',
+                            color: Colors.teal,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ReportMetric(
+                            label: 'Tiket Dibeli Keluar',
+                            value: '$paidQty pcs',
+                            detail: 'Subtotal = ${_formatRupiah(paidSubtotal)}',
+                            color: AppColors.safetyOrange,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     // Detail per kategori
@@ -542,6 +585,52 @@ class RekapScreen extends ConsumerWidget {
                                     ),
                                     Column(
                                       crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Gratis',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${item.freeQty} pcs',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: Colors.teal,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          'Dibeli',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${item.paidQty} pcs',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: AppColors.safetyOrange,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
                                           CrossAxisAlignment.end,
                                       children: [
                                         Text(
@@ -622,6 +711,46 @@ class RekapScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReportMetric extends StatelessWidget {
+  const _ReportMetric({
+    required this.label,
+    required this.value,
+    required this.detail,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final String detail;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(detail, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
       ),
     );
   }

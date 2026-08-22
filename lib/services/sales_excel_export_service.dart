@@ -120,6 +120,14 @@ class SalesExcelExportService {
       0,
       (sum, item) => sum + item.subtotal,
     );
+    final freeQty = activeItems
+        .where((item) => item.subtotal == 0)
+        .fold<int>(0, (sum, item) => sum + item.qty);
+    final paidQty = totalQty - freeQty;
+    final freeSubtotal = activeItems
+        .where((item) => item.subtotal == 0)
+        .fold<int>(0, (sum, item) => sum + item.subtotal);
+    final paidSubtotal = totalNominal - freeSubtotal;
     final totalTransactions = activeTransactions.length;
     final voidedTransactions = filteredTransactions
         .where((item) => item.isVoided)
@@ -138,7 +146,11 @@ class SalesExcelExportService {
     _append(summary, ['Transaksi aktif', totalTransactions]);
     _append(summary, ['Transaksi dibatalkan', voidedTransactions]);
     _append(summary, ['Tiket terjual', totalQty]);
+    _append(summary, ['Tiket gratis keluar (subtotal = 0)', freeQty]);
+    _append(summary, ['Tiket dibeli keluar (subtotal != 0)', paidQty]);
     _append(summary, ['Total penjualan', totalNominal]);
+    _append(summary, ['Nominal tiket gratis', freeSubtotal]);
+    _append(summary, ['Nominal tiket dibeli', paidSubtotal]);
     _append(summary, ['Total kapasitas tiket', totalCapacity]);
     _append(summary, ['Sisa tiket', totalRemaining]);
 
@@ -147,6 +159,8 @@ class SalesExcelExportService {
       'Transaksi Aktif',
       'Transaksi Dibatalkan',
       'Tiket Terjual',
+      'Tiket Gratis',
+      'Tiket Dibeli',
       'Total Penjualan',
       'Tunai',
       'QRIS',
@@ -175,17 +189,19 @@ class SalesExcelExportService {
         activeCount,
         voidedCount,
         aggregate.qty,
+        aggregate.freeQty,
+        aggregate.paidQty,
         aggregate.subtotal,
         aggregate.paymentTotals['tunai'] ?? 0,
         aggregate.paymentTotals['qris'] ?? 0,
         aggregate.paymentTotals['yesplis'] ?? 0,
         aggregate.paymentTotals.entries
-          .where(
-            (entry) =>
-              entry.key != 'tunai' &&
-              entry.key != 'qris' &&
-              entry.key != 'yesplis',
-          )
+            .where(
+              (entry) =>
+                  entry.key != 'tunai' &&
+                  entry.key != 'qris' &&
+                  entry.key != 'yesplis',
+            )
             .fold<int>(0, (sum, entry) => sum + entry.value),
       ]);
     }
@@ -258,6 +274,7 @@ class SalesExcelExportService {
       'Qty',
       'Harga Efektif / Tiket',
       'Subtotal',
+      'Status Tiket',
       'Metode Pembayaran',
       'Status',
       'Device ID',
@@ -281,6 +298,7 @@ class SalesExcelExportService {
           item.qty,
           item.qty == 0 ? 0 : item.subtotal ~/ item.qty,
           item.subtotal,
+          item.subtotal == 0 ? 'Gratis' : 'Dibeli',
           transaction.paymentMethod,
           transaction.isVoided ? 'Dibatalkan' : 'Aktif',
           transaction.deviceId,
@@ -314,6 +332,13 @@ class SalesExcelExportService {
     final aggregate = aggregates.putIfAbsent(key, _SalesAggregate.new);
     aggregate.qty += qty;
     aggregate.subtotal += subtotal;
+    if (subtotal == 0) {
+      aggregate.freeQty += qty;
+      aggregate.freeSubtotal += subtotal;
+    } else {
+      aggregate.paidQty += qty;
+      aggregate.paidSubtotal += subtotal;
+    }
     aggregate.transactionIds.add(transactionId);
     if (paymentMethod != null) {
       aggregate.paymentTotals[paymentMethod] =
@@ -380,6 +405,10 @@ class SalesExcelExportService {
 class _SalesAggregate {
   int qty = 0;
   int subtotal = 0;
+  int freeQty = 0;
+  int paidQty = 0;
+  int freeSubtotal = 0;
+  int paidSubtotal = 0;
   final Set<String> transactionIds = <String>{};
   final Map<String, int> paymentTotals = <String, int>{};
 }

@@ -332,41 +332,58 @@ Future<List<RekapPenjualanItem>> _loadRekapPenjualanByRange(
       )
       .map((transaction) => transaction.id)
       .toSet();
-  if (transactionIds.isEmpty) return [];
-
-  if (items.isEmpty) {
-    return [];
-  }
   final categoryMap = {
     for (final category in categories) category.id: category,
   };
 
-  final aggregated = <String, ({int qty, int subtotal, String kategoriName})>{};
+  final aggregated =
+      <
+        String,
+        ({
+          int qty,
+          int subtotal,
+          int freeQty,
+          int paidQty,
+          int freeSubtotal,
+          int paidSubtotal,
+          String kategoriName,
+          String dayType,
+        })
+      >{};
   for (final item in items) {
     final transactionId = item.transactionId;
     if (!transactionIds.contains(transactionId)) continue;
     final categoryId = item.categoryId;
     final category = categoryMap[categoryId];
     final current = aggregated[categoryId];
+    final isFree = item.subtotal == 0;
 
     aggregated[categoryId] = (
       qty: (current?.qty ?? 0) + item.qty,
       subtotal: (current?.subtotal ?? 0) + item.subtotal,
-      kategoriName:
-          category?.displayName ?? (current?.kategoriName ?? categoryId),
+      freeQty: (current?.freeQty ?? 0) + (isFree ? item.qty : 0),
+      paidQty: (current?.paidQty ?? 0) + (isFree ? 0 : item.qty),
+      freeSubtotal: current?.freeSubtotal ?? 0,
+      paidSubtotal: (current?.paidSubtotal ?? 0) + (isFree ? 0 : item.subtotal),
+      kategoriName: category?.name ?? (current?.kategoriName ?? categoryId),
+      dayType: category?.dayType ?? (current?.dayType ?? '-'),
     );
   }
 
-  final result = aggregated.entries
-      .map(
-        (entry) => RekapPenjualanItem(
-          kategoriId: entry.key,
-          kategoriName: entry.value.kategoriName,
-          totalQty: entry.value.qty,
-          totalSubtotal: entry.value.subtotal,
-        ),
-      )
-      .toList();
+  final result = categories.map((category) {
+    final totals = aggregated[category.id];
+    return RekapPenjualanItem(
+      kategoriId: category.id,
+      kategoriName: category.name,
+      dayType: category.dayType,
+      totalQty: totals?.qty ?? 0,
+      totalSubtotal: totals?.subtotal ?? 0,
+      freeQty: totals?.freeQty ?? 0,
+      paidQty: totals?.paidQty ?? 0,
+      freeSubtotal: totals?.freeSubtotal ?? 0,
+      paidSubtotal: totals?.paidSubtotal ?? 0,
+    );
+  }).toList();
 
   result.sort((a, b) => b.totalSubtotal.compareTo(a.totalSubtotal));
   return result;
