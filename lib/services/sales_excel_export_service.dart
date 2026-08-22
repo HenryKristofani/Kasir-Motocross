@@ -150,6 +150,7 @@ class SalesExcelExportService {
       'Total Penjualan',
       'Tunai',
       'QRIS',
+      'YesPlis',
       'Metode Lain',
     ]);
     final allDateKeys = <String>{
@@ -177,8 +178,14 @@ class SalesExcelExportService {
         aggregate.subtotal,
         aggregate.paymentTotals['tunai'] ?? 0,
         aggregate.paymentTotals['qris'] ?? 0,
+        aggregate.paymentTotals['yesplis'] ?? 0,
         aggregate.paymentTotals.entries
-            .where((entry) => entry.key != 'tunai' && entry.key != 'qris')
+          .where(
+            (entry) =>
+              entry.key != 'tunai' &&
+              entry.key != 'qris' &&
+              entry.key != 'yesplis',
+          )
             .fold<int>(0, (sum, entry) => sum + entry.value),
       ]);
     }

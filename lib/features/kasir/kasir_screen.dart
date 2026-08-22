@@ -114,8 +114,9 @@ class KasirScreen extends ConsumerWidget {
                             )
                             .toList(),
                         onChanged: (value) {
-                          if (value != null)
+                          if (value != null) {
                             Navigator.pop(dialogContext, value);
+                          }
                         },
                       ),
               ),
@@ -199,6 +200,77 @@ class KasirScreen extends ConsumerWidget {
               backgroundColor: AppColors.dirtTan,
               foregroundColor: Colors.white,
             ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _showYesplisPaymentDialog(context, ref, kategoris, picName);
+            },
+            icon: const Icon(Icons.confirmation_number_outlined),
+            label: const Text('YesPlis'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.asphalt,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showYesplisPaymentDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<TicketCategoryModel> kategoris,
+    String? picName,
+  ) {
+    final total = _calculateCartTotal(
+      ref.read(cartProvider),
+      kategoris,
+      ref.read(cartProvider.notifier),
+    );
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Pembayaran YesPlis'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pastikan pembayaran YesPlis sudah diterima.'),
+            const SizedBox(height: 16),
+            Text(
+              _formatRupiah(total),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppColors.asphalt,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _bayar(
+                context,
+                ref,
+                kategoris,
+                PaymentConstants.yesplis,
+                picName: picName,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.asphalt,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Konfirmasi'),
           ),
         ],
       ),
