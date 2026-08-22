@@ -86,6 +86,7 @@ class KasirScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
+    String? keterangan,
   ) async {
     final picName = await showDialog<String>(
       context: context,
@@ -143,7 +144,13 @@ class KasirScreen extends ConsumerWidget {
     );
 
     if (picName != null && context.mounted) {
-      _showPaymentMethodDialog(context, ref, kategoris, picName);
+      _showPaymentMethodDialog(
+        context,
+        ref,
+        kategoris,
+        picName,
+        keterangan,
+      );
     }
   }
 
@@ -152,6 +159,7 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
     String? picName,
+    String? keterangan,
   ) {
     debugPrint(
       '=== _showPaymentMethodDialog called with context valid: ${context.mounted}',
@@ -180,7 +188,13 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _showCashPaymentDialog(context, ref, kategoris, picName);
+              _showCashPaymentDialog(
+                context,
+                ref,
+                kategoris,
+                picName,
+                keterangan,
+              );
             },
             icon: const Icon(Icons.payments),
             label: const Text('Tunai'),
@@ -192,7 +206,13 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _showQRISPaymentDialog(context, ref, kategoris, picName);
+              _showQRISPaymentDialog(
+                context,
+                ref,
+                kategoris,
+                picName,
+                keterangan,
+              );
             },
             icon: const Icon(Icons.qr_code),
             label: const Text('QRIS'),
@@ -204,7 +224,13 @@ class KasirScreen extends ConsumerWidget {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              _showYesplisPaymentDialog(context, ref, kategoris, picName);
+              _showYesplisPaymentDialog(
+                context,
+                ref,
+                kategoris,
+                picName,
+                keterangan,
+              );
             },
             icon: const Icon(Icons.confirmation_number_outlined),
             label: const Text('YesPlis'),
@@ -223,6 +249,7 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
     String? picName,
+    String? keterangan,
   ) {
     final total = _calculateCartTotal(
       ref.read(cartProvider),
@@ -264,6 +291,7 @@ class KasirScreen extends ConsumerWidget {
                 kategoris,
                 PaymentConstants.yesplis,
                 picName: picName,
+                keterangan: keterangan,
               );
             },
             style: ElevatedButton.styleFrom(
@@ -282,6 +310,7 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
     String? picName,
+    String? keterangan,
   ) {
     final total = _calculateCartTotal(
       ref.read(cartProvider),
@@ -413,6 +442,7 @@ class KasirScreen extends ConsumerWidget {
                             uangMasuk: uangMasuk,
                             uangKembali: kembalian,
                             picName: picName,
+                            keterangan: keterangan,
                           );
                         }
                       : null,
@@ -435,6 +465,7 @@ class KasirScreen extends ConsumerWidget {
     WidgetRef ref,
     List<TicketCategoryModel> kategoris,
     String? picName,
+    String? keterangan,
   ) {
     final total = _calculateCartTotal(
       ref.read(cartProvider),
@@ -528,6 +559,7 @@ class KasirScreen extends ConsumerWidget {
                 kategoris,
                 PaymentConstants.qris,
                 picName: picName,
+                keterangan: keterangan,
               );
             },
             style: ElevatedButton.styleFrom(
@@ -698,6 +730,7 @@ class KasirScreen extends ConsumerWidget {
     int? uangMasuk,
     int? uangKembali,
     String? picName,
+    String? keterangan,
   }) async {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
@@ -734,6 +767,7 @@ class KasirScreen extends ConsumerWidget {
             localNumber: 'A-${now.millisecondsSinceEpoch}',
             deviceId: 'device-dev-1',
             picName: picName,
+            keterangan: keterangan,
             total: total,
             paymentMethod: paymentMethod,
             items: items
@@ -768,6 +802,7 @@ class KasirScreen extends ConsumerWidget {
       localNumber: 'A-${now.millisecondsSinceEpoch}',
       deviceId: 'device-dev-1',
       picName: picName,
+      keterangan: keterangan,
       total: total,
       paymentMethod: paymentMethod,
       isSynced: false,
@@ -859,9 +894,15 @@ class KasirScreen extends ConsumerWidget {
     List<TicketCategoryModel> kategoris,
   ) {
     final pageContext = context;
+    final keteranganController = TextEditingController();
 
-    void openPaymentDialog() {
-      _choosePicThenPayment(pageContext, ref, kategoris);
+    void openPaymentDialog(String? keterangan) {
+      _choosePicThenPayment(
+        pageContext,
+        ref,
+        kategoris,
+        keterangan,
+      );
     }
 
     showModalBottomSheet(
@@ -880,6 +921,9 @@ class KasirScreen extends ConsumerWidget {
 
             Future<void> continueToPayment() async {
               debugPrint('=== Lanjut ke Pembayaran pressed in cart sheet');
+              final keterangan = keteranganController.text.trim().isEmpty
+                  ? null
+                  : keteranganController.text.trim();
               if (Navigator.of(sheetContext).canPop()) {
                 debugPrint('=== Before Navigator.pop() on cart sheet');
                 Navigator.of(sheetContext).pop();
@@ -890,7 +934,7 @@ class KasirScreen extends ConsumerWidget {
 
               debugPrint('=== Before openPaymentDialog call');
               if (pageContext.mounted) {
-                openPaymentDialog();
+                openPaymentDialog(keterangan);
               }
               debugPrint('=== After openPaymentDialog call');
             }
@@ -1141,6 +1185,18 @@ class KasirScreen extends ConsumerWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
+                          TextField(
+                            controller: keteranganController,
+                            maxLength: 200,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              labelText: 'Keterangan',
+                              hintText: 'Opsional, misalnya nama pembeli',
+                              prefixIcon: Icon(Icons.notes_outlined),
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
@@ -1160,7 +1216,7 @@ class KasirScreen extends ConsumerWidget {
           },
         );
       },
-    );
+    ).whenComplete(keteranganController.dispose);
   }
 
   // Daftar kategori tiket — dipakai di kedua layout (portrait & landscape)

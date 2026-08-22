@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   local_number TEXT NOT NULL,
   device_id TEXT NOT NULL,
   pic_name TEXT,
+  keterangan TEXT,
   total DECIMAL(10, 2) NOT NULL,
   payment_method TEXT NOT NULL,
   is_voided BOOLEAN DEFAULT false,
@@ -111,6 +112,9 @@ ALTER TABLE transaction_items
 ALTER TABLE transactions
   ADD COLUMN IF NOT EXISTS pic_name TEXT;
 
+ALTER TABLE transactions
+  ADD COLUMN IF NOT EXISTS keterangan TEXT;
+
 -- Default invitation paddock tickets.
 INSERT INTO ticket_categories (id, name, day_type, price, quota)
 VALUES
@@ -179,12 +183,14 @@ $$;
 -- Atomic online checkout. This is the only safe stock validation path for
 -- multiple laptops using the same Supabase project.
 DROP FUNCTION IF EXISTS public.create_ticket_sale(TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB);
+DROP FUNCTION IF EXISTS public.create_ticket_sale(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT, JSONB);
 
 CREATE OR REPLACE FUNCTION public.create_ticket_sale(
   p_transaction_id TEXT,
   p_local_number TEXT,
   p_device_id TEXT,
   p_pic_name TEXT,
+  p_keterangan TEXT,
   p_total INTEGER,
   p_payment_method TEXT,
   p_items JSONB
@@ -274,8 +280,8 @@ BEGIN
     END IF;
   END LOOP;
 
-  INSERT INTO transactions (id, local_number, device_id, pic_name, total, payment_method, is_voided, created_at)
-  VALUES (p_transaction_id, p_local_number, p_device_id, p_pic_name, p_total, p_payment_method, false, NOW());
+  INSERT INTO transactions (id, local_number, device_id, pic_name, keterangan, total, payment_method, is_voided, created_at)
+  VALUES (p_transaction_id, p_local_number, p_device_id, p_pic_name, p_keterangan, p_total, p_payment_method, false, NOW());
 
   FOR item IN SELECT value FROM jsonb_array_elements(p_items)
   LOOP

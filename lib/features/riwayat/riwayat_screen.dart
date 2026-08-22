@@ -240,6 +240,12 @@ class RiwayatScreen extends ConsumerWidget {
                             if (transaction.picName != null &&
                                 transaction.picName!.isNotEmpty)
                               _buildDetailRow('PIC', transaction.picName!),
+                            if (transaction.keterangan != null &&
+                                transaction.keterangan!.isNotEmpty)
+                              _buildDetailRow(
+                                'Keterangan',
+                                transaction.keterangan!,
+                              ),
                             if (transaction.paymentMethod ==
                                 PaymentConstants.tunai) ...[
                               _buildDetailRow(

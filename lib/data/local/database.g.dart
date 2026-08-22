@@ -454,6 +454,17 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _keteranganMeta = const VerificationMeta(
+    'keterangan',
+  );
+  @override
+  late final GeneratedColumn<String> keterangan = GeneratedColumn<String>(
+    'keterangan',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _totalMeta = const VerificationMeta('total');
   @override
   late final GeneratedColumn<int> total = GeneratedColumn<int>(
@@ -543,6 +554,7 @@ class $TransactionsTable extends Transactions
     localNumber,
     deviceId,
     picName,
+    keterangan,
     total,
     paymentMethod,
     isSynced,
@@ -591,6 +603,12 @@ class $TransactionsTable extends Transactions
       context.handle(
         _picNameMeta,
         picName.isAcceptableOrUnknown(data['pic_name']!, _picNameMeta),
+      );
+    }
+    if (data.containsKey('keterangan')) {
+      context.handle(
+        _keteranganMeta,
+        keterangan.isAcceptableOrUnknown(data['keterangan']!, _keteranganMeta),
       );
     }
     if (data.containsKey('total')) {
@@ -669,6 +687,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}pic_name'],
       ),
+      keterangan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}keterangan'],
+      ),
       total: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}total'],
@@ -711,6 +733,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String localNumber;
   final String deviceId;
   final String? picName;
+  final String? keterangan;
   final int total;
   final String paymentMethod;
   final bool isSynced;
@@ -723,6 +746,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.localNumber,
     required this.deviceId,
     this.picName,
+    this.keterangan,
     required this.total,
     required this.paymentMethod,
     required this.isSynced,
@@ -739,6 +763,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['device_id'] = Variable<String>(deviceId);
     if (!nullToAbsent || picName != null) {
       map['pic_name'] = Variable<String>(picName);
+    }
+    if (!nullToAbsent || keterangan != null) {
+      map['keterangan'] = Variable<String>(keterangan);
     }
     map['total'] = Variable<int>(total);
     map['payment_method'] = Variable<String>(paymentMethod);
@@ -762,6 +789,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       picName: picName == null && nullToAbsent
           ? const Value.absent()
           : Value(picName),
+      keterangan: keterangan == null && nullToAbsent
+          ? const Value.absent()
+          : Value(keterangan),
       total: Value(total),
       paymentMethod: Value(paymentMethod),
       isSynced: Value(isSynced),
@@ -786,6 +816,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       localNumber: serializer.fromJson<String>(json['localNumber']),
       deviceId: serializer.fromJson<String>(json['deviceId']),
       picName: serializer.fromJson<String?>(json['picName']),
+      keterangan: serializer.fromJson<String?>(json['keterangan']),
       total: serializer.fromJson<int>(json['total']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -803,6 +834,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'localNumber': serializer.toJson<String>(localNumber),
       'deviceId': serializer.toJson<String>(deviceId),
       'picName': serializer.toJson<String?>(picName),
+      'keterangan': serializer.toJson<String?>(keterangan),
       'total': serializer.toJson<int>(total),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -818,6 +850,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     String? localNumber,
     String? deviceId,
     Value<String?> picName = const Value.absent(),
+    Value<String?> keterangan = const Value.absent(),
     int? total,
     String? paymentMethod,
     bool? isSynced,
@@ -830,6 +863,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     localNumber: localNumber ?? this.localNumber,
     deviceId: deviceId ?? this.deviceId,
     picName: picName.present ? picName.value : this.picName,
+    keterangan: keterangan.present ? keterangan.value : this.keterangan,
     total: total ?? this.total,
     paymentMethod: paymentMethod ?? this.paymentMethod,
     isSynced: isSynced ?? this.isSynced,
@@ -846,6 +880,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : this.localNumber,
       deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
       picName: data.picName.present ? data.picName.value : this.picName,
+      keterangan: data.keterangan.present
+          ? data.keterangan.value
+          : this.keterangan,
       total: data.total.present ? data.total.value : this.total,
       paymentMethod: data.paymentMethod.present
           ? data.paymentMethod.value
@@ -867,6 +904,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('localNumber: $localNumber, ')
           ..write('deviceId: $deviceId, ')
           ..write('picName: $picName, ')
+          ..write('keterangan: $keterangan, ')
           ..write('total: $total, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('isSynced: $isSynced, ')
@@ -884,6 +922,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     localNumber,
     deviceId,
     picName,
+    keterangan,
     total,
     paymentMethod,
     isSynced,
@@ -900,6 +939,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.localNumber == this.localNumber &&
           other.deviceId == this.deviceId &&
           other.picName == this.picName &&
+          other.keterangan == this.keterangan &&
           other.total == this.total &&
           other.paymentMethod == this.paymentMethod &&
           other.isSynced == this.isSynced &&
@@ -914,6 +954,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> localNumber;
   final Value<String> deviceId;
   final Value<String?> picName;
+  final Value<String?> keterangan;
   final Value<int> total;
   final Value<String> paymentMethod;
   final Value<bool> isSynced;
@@ -927,6 +968,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.localNumber = const Value.absent(),
     this.deviceId = const Value.absent(),
     this.picName = const Value.absent(),
+    this.keterangan = const Value.absent(),
     this.total = const Value.absent(),
     this.paymentMethod = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -941,6 +983,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required String localNumber,
     required String deviceId,
     this.picName = const Value.absent(),
+    this.keterangan = const Value.absent(),
     required int total,
     required String paymentMethod,
     this.isSynced = const Value.absent(),
@@ -960,6 +1003,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? localNumber,
     Expression<String>? deviceId,
     Expression<String>? picName,
+    Expression<String>? keterangan,
     Expression<int>? total,
     Expression<String>? paymentMethod,
     Expression<bool>? isSynced,
@@ -974,6 +1018,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (localNumber != null) 'local_number': localNumber,
       if (deviceId != null) 'device_id': deviceId,
       if (picName != null) 'pic_name': picName,
+      if (keterangan != null) 'keterangan': keterangan,
       if (total != null) 'total': total,
       if (paymentMethod != null) 'payment_method': paymentMethod,
       if (isSynced != null) 'is_synced': isSynced,
@@ -990,6 +1035,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String>? localNumber,
     Value<String>? deviceId,
     Value<String?>? picName,
+    Value<String?>? keterangan,
     Value<int>? total,
     Value<String>? paymentMethod,
     Value<bool>? isSynced,
@@ -1004,6 +1050,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       localNumber: localNumber ?? this.localNumber,
       deviceId: deviceId ?? this.deviceId,
       picName: picName ?? this.picName,
+      keterangan: keterangan ?? this.keterangan,
       total: total ?? this.total,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       isSynced: isSynced ?? this.isSynced,
@@ -1029,6 +1076,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     }
     if (picName.present) {
       map['pic_name'] = Variable<String>(picName.value);
+    }
+    if (keterangan.present) {
+      map['keterangan'] = Variable<String>(keterangan.value);
     }
     if (total.present) {
       map['total'] = Variable<int>(total.value);
@@ -1064,6 +1114,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('localNumber: $localNumber, ')
           ..write('deviceId: $deviceId, ')
           ..write('picName: $picName, ')
+          ..write('keterangan: $keterangan, ')
           ..write('total: $total, ')
           ..write('paymentMethod: $paymentMethod, ')
           ..write('isSynced: $isSynced, ')
@@ -2331,6 +2382,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required String localNumber,
       required String deviceId,
       Value<String?> picName,
+      Value<String?> keterangan,
       required int total,
       required String paymentMethod,
       Value<bool> isSynced,
@@ -2346,6 +2398,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> localNumber,
       Value<String> deviceId,
       Value<String?> picName,
+      Value<String?> keterangan,
       Value<int> total,
       Value<String> paymentMethod,
       Value<bool> isSynced,
@@ -2382,6 +2435,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get picName => $composableBuilder(
     column: $table.picName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get keterangan => $composableBuilder(
+    column: $table.keterangan,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2450,6 +2508,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get keterangan => $composableBuilder(
+    column: $table.keterangan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get total => $composableBuilder(
     column: $table.total,
     builder: (column) => ColumnOrderings(column),
@@ -2508,6 +2571,11 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get picName =>
       $composableBuilder(column: $table.picName, builder: (column) => column);
+
+  GeneratedColumn<String> get keterangan => $composableBuilder(
+    column: $table.keterangan,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get total =>
       $composableBuilder(column: $table.total, builder: (column) => column);
@@ -2570,6 +2638,7 @@ class $$TransactionsTableTableManager
                 Value<String> localNumber = const Value.absent(),
                 Value<String> deviceId = const Value.absent(),
                 Value<String?> picName = const Value.absent(),
+                Value<String?> keterangan = const Value.absent(),
                 Value<int> total = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -2583,6 +2652,7 @@ class $$TransactionsTableTableManager
                 localNumber: localNumber,
                 deviceId: deviceId,
                 picName: picName,
+                keterangan: keterangan,
                 total: total,
                 paymentMethod: paymentMethod,
                 isSynced: isSynced,
@@ -2598,6 +2668,7 @@ class $$TransactionsTableTableManager
                 required String localNumber,
                 required String deviceId,
                 Value<String?> picName = const Value.absent(),
+                Value<String?> keterangan = const Value.absent(),
                 required int total,
                 required String paymentMethod,
                 Value<bool> isSynced = const Value.absent(),
@@ -2611,6 +2682,7 @@ class $$TransactionsTableTableManager
                 localNumber: localNumber,
                 deviceId: deviceId,
                 picName: picName,
+                keterangan: keterangan,
                 total: total,
                 paymentMethod: paymentMethod,
                 isSynced: isSynced,
