@@ -55,7 +55,7 @@ class KategoriTiketScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: selectedName,
+                    initialValue: selectedName,
                     decoration: const InputDecoration(
                       labelText: 'Kategori Induk',
                     ),
@@ -78,7 +78,7 @@ class KategoriTiketScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedDayType,
+                    initialValue: selectedDayType,
                     decoration: const InputDecoration(labelText: 'Varian Hari'),
                     items: [
                       const DropdownMenuItem(
@@ -312,7 +312,30 @@ class KategoriTiketScreen extends ConsumerWidget {
             final kategori = kategoriList[index];
             final sisaKuota = sisaKuotaMap[kategori.id] ?? kategori.quota ?? -1;
             final hasQuota = sisaKuotaMap.containsKey(kategori.id);
-            final terjual = kategori.quota != null
+            final terjual = kategori.isBundling
+                ? (() {
+                    final relatedDay1 = kategoriList.firstWhere(
+                      (item) =>
+                          item.name == kategori.name && item.dayType == 'day1',
+                      orElse: () => kategori,
+                    );
+                    final relatedDay2 = kategoriList.firstWhere(
+                      (item) =>
+                          item.name == kategori.name && item.dayType == 'day2',
+                      orElse: () => kategori,
+                    );
+                    final day1Quota = relatedDay1.quota ?? 0;
+                    final day2Quota = relatedDay2.quota ?? 0;
+                    final day1Sold =
+                        day1Quota - (sisaKuotaMap[relatedDay1.id] ?? day1Quota);
+                    final day2Sold =
+                        day2Quota - (sisaKuotaMap[relatedDay2.id] ?? day2Quota);
+                    final bundleSold = [day1Sold, day2Sold].reduce(
+                      (a, b) => a < b ? a : b,
+                    );
+                    return bundleSold.clamp(0, 1 << 31);
+                  })()
+                : kategori.quota != null
                 ? (kategori.quota! - sisaKuota)
                 : null;
 
@@ -376,7 +399,7 @@ class KategoriTiketScreen extends ConsumerWidget {
                             ),
                             child: Text(
                               kategori.isBundling
-                                  ? 'Sisa efektif: $sisaKuota'
+                                  ? 'Terjual: $terjual / Sisa efektif: $sisaKuota'
                                   : 'Terjual: $terjual / Kuota: ${kategori.quota}',
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
@@ -391,26 +414,24 @@ class KategoriTiketScreen extends ConsumerWidget {
                   ],
                 ),
                 trailing: PopupMenuButton(
+                  onSelected: (value) {
+                    if (!context.mounted) return;
+                    if (value == 'edit') {
+                      _showKategoriDialog(context, ref, kategori: kategori);
+                    } else if (value == 'delete') {
+                      _showDeleteConfirmDialog(context, ref, kategori);
+                    }
+                  },
                   itemBuilder: (context) => [
-                    PopupMenuItem(
-                      child: const Text('Edit'),
-                      onTap: () => Future.microtask(
-                        // ignore: use_build_context_synchronously
-                        () => _showKategoriDialog(
-                          context,
-                          ref,
-                          kategori: kategori,
-                        ),
-                      ),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit'),
                     ),
-                    PopupMenuItem(
-                      child: const Text(
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text(
                         'Hapus',
                         style: TextStyle(color: Colors.red),
-                      ),
-                      onTap: () => Future.microtask(
-                        // ignore: use_build_context_synchronously
-                        () => _showDeleteConfirmDialog(context, ref, kategori),
                       ),
                     ),
                   ],

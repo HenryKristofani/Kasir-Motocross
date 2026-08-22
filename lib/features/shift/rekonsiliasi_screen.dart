@@ -105,7 +105,7 @@ class _RekonsiliasiScreenState extends ConsumerState<RekonsiliasiScreen> {
                     'catatan': _catatanController.text.trim().isEmpty
                         ? null
                         : _catatanController.text.trim(),
-                    'created_at': DateTime.now().toIso8601String(),
+                    'created_at': DateTime.now().toUtc().toIso8601String(),
                   });
 
               if (context.mounted) {

@@ -353,8 +353,8 @@ class SyncService {
             'payment_method': txn.paymentMethod,
             'is_voided': txn.isVoided,
             'void_reason': txn.voidReason,
-            'voided_at': txn.voidedAt?.toIso8601String(),
-            'created_at': txn.createdAt.toIso8601String(),
+            'voided_at': txn.voidedAt?.toUtc().toIso8601String(),
+            'created_at': txn.createdAt.toUtc().toIso8601String(),
           });
 
           syncedIds.add(txn.id);
@@ -637,7 +637,7 @@ class SyncService {
             'total_fisik_tunai': recon.totalFisikTunai,
             'selisih': recon.selisih,
             'catatan': recon.catatan,
-            'created_at': recon.createdAt.toIso8601String(),
+            'created_at': recon.createdAt.toUtc().toIso8601String(),
           });
 
           syncedIds.add(recon.id);
